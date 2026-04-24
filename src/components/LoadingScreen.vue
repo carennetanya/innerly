@@ -1,7 +1,21 @@
 <template>
   <div class="ls-root">
-    <!-- Black overlay — always rendered first, covers everything -->
-    <div class="black-fade" :class="{ 'fade-out': fadeOutBlack }"></div>
+    <!-- Black overlay with mode picker -->
+    <div class="black-fade" :class="{ 'fade-out': fadeOutBlack }">
+      <div class="mode-picker" :class="{ 'picker-show': pickerVisible }">
+        <p class="picker-label">choose your vibe</p>
+        <div class="picker-options">
+          <button class="picker-btn picker-light" @click="pickMode(false)">
+            <span class="picker-icon">☀️</span>
+            <span>Light</span>
+          </button>
+          <button class="picker-btn picker-dark" @click="pickMode(true)">
+            <span class="picker-icon">🌙</span>
+            <span>Dark</span>
+          </button>
+        </div>
+      </div>
+    </div>
 
     <div
       v-if="visible"
@@ -9,27 +23,28 @@
       :class="{ 'dark-mode': isDark, 'screen-visible': screenVisible }"
     >
       <!-- Theme toggle -->
-      <div
-        class="theme-toggle"
-        @click="toggleTheme"
-        :class="{ 'is-dark': isDark }"
-      >
-        <div class="toggle-light-scene">
-          <div class="cloud cloud-1"></div>
-          <div class="cloud cloud-2"></div>
+      <div class="theme-toggle-wrap" @click="toggleTheme">
+        <div class="theme-toggle" :class="{ 'is-dark': isDark }">
+          <div class="toggle-light-scene">
+            <div class="cloud cloud-1"></div>
+            <div class="cloud cloud-2"></div>
+          </div>
+          <div class="toggle-dark-scene">
+            <div class="tstar tstar-1"></div>
+            <div class="tstar tstar-2"></div>
+            <div class="tstar tstar-3"></div>
+            <div class="tstar tstar-4"></div>
+          </div>
+          <div class="toggle-knob">
+            <div class="crater crater-1"></div>
+            <div class="crater crater-2"></div>
+            <div class="crater crater-3"></div>
+            <div class="sun-glow"></div>
+          </div>
         </div>
-        <div class="toggle-dark-scene">
-          <div class="tstar tstar-1"></div>
-          <div class="tstar tstar-2"></div>
-          <div class="tstar tstar-3"></div>
-          <div class="tstar tstar-4"></div>
-        </div>
-        <div class="toggle-knob">
-          <div class="crater crater-1"></div>
-          <div class="crater crater-2"></div>
-          <div class="crater crater-3"></div>
-          <div class="sun-glow"></div>
-        </div>
+        <span class="theme-toggle-label">
+          {{ isDark ? "switch to light mode" : "switch to dark mode" }}
+        </span>
       </div>
 
       <div class="bg-overlay"></div>
@@ -177,6 +192,8 @@ const isDark = ref(false);
 
 const fadeOutBlack = ref(false);
 const screenVisible = ref(false);
+const pickerVisible = ref(false);
+const modePicked = ref(false);
 
 const isPlaying = ref(false);
 const showAutoplayHint = ref(false);
@@ -187,18 +204,53 @@ const audio = () => props.audioEl;
 function toggleTheme() {
   isDark.value = !isDark.value;
 }
-function handleStart() {
-  // Klik user = interaksi valid, langsung play di sini sebelum pindah stage
-  // supaya bypass browser autoplay policy waktu hosting
-  if (audio() && !isPlaying.value) {
-    audio().volume = 0.55;
-    audio()
-      .play()
-      .then(() => {
-        isPlaying.value = true;
-      })
-      .catch(() => {});
+
+function pickMode(dark) {
+  if (modePicked.value) return;
+  modePicked.value = true;
+  isDark.value = dark;
+  // User interaksi → play musik langsung (bypass autoplay policy)
+  if (audio()) {
+    fadeInMusic(audio());
   }
+  // Sembunyikan picker, fade out hitam, mulai animasi
+  pickerVisible.value = false;
+  setTimeout(() => {
+    fadeOutBlack.value = true;
+  }, 300);
+  setTimeout(() => {
+    screenVisible.value = true;
+  }, 1400);
+  // Geser semua phase relatif dari saat user pilih
+  setTimeout(() => {
+    phase.value = 1;
+  }, 1700);
+  setTimeout(() => {
+    phase.value = 2;
+    showSparks1.value = true;
+    setTimeout(() => {
+      showSparks1.value = false;
+    }, 1200);
+  }, 2300);
+  setTimeout(() => {
+    phase.value = 3;
+    showSparks2.value = true;
+    setTimeout(() => {
+      showSparks2.value = false;
+    }, 1200);
+  }, 4100);
+  setTimeout(() => {
+    phase.value = 4;
+  }, 4800);
+  setTimeout(() => {
+    phase.value = 5;
+  }, 7300);
+  setTimeout(() => {
+    phase.value = 6;
+  }, 9100);
+}
+
+function handleStart() {
   emit("done", isDark.value);
 }
 
@@ -274,65 +326,10 @@ function fadeInMusic(audio, targetVolume = 0.55, durationMs = 2500) {
 }
 
 onMounted(() => {
-  // Layar hitam selama 2 detik, baru fade out
+  // Tampilkan mode picker setelah 600ms (beri waktu hitam render dulu)
   setTimeout(() => {
-    fadeOutBlack.value = true;
-  }, 2000);
-
-  setTimeout(() => {
-    screenVisible.value = true;
-    if (audio()) {
-      // Coba autoplay — berhasil di localhost, di hosting mungkin diblokir browser
-      // Kalau gagal, musik akan play saat user klik tombol Start (handleStart)
-      audio().volume = 0;
-      audio()
-        .play()
-        .then(() => {
-          isPlaying.value = true;
-          // fade in volume
-          const steps = 60;
-          const interval = 2500 / steps;
-          const targetVol = 0.55;
-          let step = 0;
-          const timer = setInterval(() => {
-            step++;
-            audio().volume = Math.min(targetVol, (targetVol / steps) * step);
-            if (step >= steps) clearInterval(timer);
-          }, interval);
-        })
-        .catch(() => {
-          // Autoplay diblokir — musik akan nyala saat user klik Start
-          showAutoplayHint.value = false; // sembunyikan hint, Start button jadi trigger-nya
-        });
-    }
-  }, 3100);
-
-  setTimeout(() => {
-    phase.value = 1;
-  }, 3400);
-  setTimeout(() => {
-    phase.value = 2;
-    showSparks1.value = true;
-    setTimeout(() => {
-      showSparks1.value = false;
-    }, 1200);
-  }, 4000);
-  setTimeout(() => {
-    phase.value = 3;
-    showSparks2.value = true;
-    setTimeout(() => {
-      showSparks2.value = false;
-    }, 1200);
-  }, 5800);
-  setTimeout(() => {
-    phase.value = 4;
-  }, 6500);
-  setTimeout(() => {
-    phase.value = 5;
-  }, 9000);
-  setTimeout(() => {
-    phase.value = 6;
-  }, 10800);
+    pickerVisible.value = true;
+  }, 600);
 });
 </script>
 
@@ -343,6 +340,84 @@ onMounted(() => {
   position: fixed;
   inset: 0;
   z-index: 9999;
+}
+
+/* ── Mode Picker ── */
+.mode-picker {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+  opacity: 0;
+  transform: translateY(12px);
+  transition:
+    opacity 0.6s ease,
+    transform 0.6s ease;
+  pointer-events: none;
+}
+.mode-picker.picker-show {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: all;
+}
+.picker-label {
+  font-family: "Outfit", sans-serif;
+  font-size: 0.78rem;
+  font-weight: 300;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
+  margin: 0;
+}
+.picker-options {
+  display: flex;
+  gap: 20px;
+}
+.picker-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 22px 36px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-family: "Outfit", sans-serif;
+  font-size: 0.85rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(8px);
+  transition:
+    background 0.25s,
+    border-color 0.25s,
+    transform 0.2s,
+    color 0.25s;
+}
+.picker-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #fff;
+  transform: translateY(-3px);
+}
+.picker-btn:active {
+  transform: translateY(0px) scale(0.97);
+}
+.picker-light:hover {
+  background: rgba(255, 240, 180, 0.15);
+  border-color: rgba(255, 220, 100, 0.4);
+}
+.picker-dark:hover {
+  background: rgba(130, 100, 255, 0.15);
+  border-color: rgba(167, 139, 250, 0.4);
+}
+.picker-icon {
+  font-size: 2rem;
+  line-height: 1;
 }
 
 /* ── Black Fade — MUST cover entire viewport including before loading screen renders ── */
@@ -390,17 +465,41 @@ onMounted(() => {
   );
 }
 
+/* Theme toggle wrap */
+.theme-toggle-wrap {
+  position: absolute;
+  top: 18px;
+  right: 20px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.theme-toggle-label {
+  font-family: "Outfit", sans-serif;
+  font-size: 0.62rem;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  color: rgba(74, 63, 122, 0.55);
+  text-transform: lowercase;
+  white-space: nowrap;
+  transition: color 0.4s ease;
+  user-select: none;
+}
+.dark-mode .theme-toggle-label {
+  color: rgba(167, 139, 250, 0.55);
+}
+
 /* Theme toggle */
 .theme-toggle {
-  position: absolute;
-  top: 22px;
-  right: 24px;
-  z-index: 100;
   width: 80px;
   height: 40px;
   border-radius: 40px;
   cursor: pointer;
   overflow: hidden;
+  position: relative;
   background: linear-gradient(135deg, #c5bad8 0%, #9e93c0 100%);
   box-shadow:
     0 3px 16px rgba(74, 63, 122, 0.25),
