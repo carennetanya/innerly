@@ -1,90 +1,165 @@
 <template>
-  <div v-if="visible" class="loading-screen" :class="{ 'dark-mode': isDark }">
-    <!-- Theme toggle switch -->
+  <div class="ls-root">
+    <!-- Black overlay — always rendered first, covers everything -->
+    <div class="black-fade" :class="{ 'fade-out': fadeOutBlack }"></div>
+
     <div
-      class="theme-toggle"
-      @click="toggleTheme"
-      :class="{ 'is-dark': isDark }"
+      v-if="visible"
+      class="loading-screen"
+      :class="{ 'dark-mode': isDark, 'screen-visible': screenVisible }"
     >
-      <div class="toggle-light-scene">
-        <div class="cloud cloud-1"></div>
-        <div class="cloud cloud-2"></div>
-      </div>
-      <div class="toggle-dark-scene">
-        <div class="tstar tstar-1"></div>
-        <div class="tstar tstar-2"></div>
-        <div class="tstar tstar-3"></div>
-        <div class="tstar tstar-4"></div>
-      </div>
-      <div class="toggle-knob">
-        <div class="crater crater-1"></div>
-        <div class="crater crater-2"></div>
-        <div class="crater crater-3"></div>
-        <div class="sun-glow"></div>
-      </div>
-    </div>
-
-    <div class="bg-overlay"></div>
-
-    <!-- Ambient floating particles (always on after phase 4) -->
-    <div class="ambient" :class="{ active: phase >= 5 }">
+      <!-- Theme toggle -->
       <div
-        class="amb-spark"
-        v-for="i in 18"
-        :key="'a' + i"
-        :style="getAmbientStyle(i)"
-      ></div>
-    </div>
-
-    <!-- Floating clouds/fog blobs -->
-    <div class="fog-scene" :class="{ active: phase >= 5 }">
-      <div class="fog-blob fog-blob-1"></div>
-      <div class="fog-blob fog-blob-2"></div>
-      <div class="fog-blob fog-blob-3"></div>
-      <div class="fog-blob fog-blob-4"></div>
-    </div>
-
-    <div class="stage">
-      <div class="ripple ripple-1" :class="{ active: phase >= 2 }"></div>
-      <div class="ripple ripple-2" :class="{ active: phase >= 2 }"></div>
-
-      <template v-if="showSparks1">
-        <div
-          v-for="i in 20"
-          :key="'s' + i"
-          class="spark"
-          :style="getSparkStyle(i, 20)"
-        ></div>
-      </template>
-      <template v-if="showSparks2">
-        <div
-          v-for="i in 18"
-          :key="'b' + i"
-          class="spark spark-burst"
-          :style="getSparkStyle(i, 18)"
-        ></div>
-      </template>
-
-      <div class="portal" :class="portalClass"></div>
-
-      <div class="logo-wrapper" :class="{ revealed: phase >= 3 }">
-        <img src="/logo.png" alt="Innerly Logo" class="logo-img" />
-      </div>
-    </div>
-
-    <div class="brand" :class="{ visible: phase >= 4 }">
-      <div class="brand-text-wrap" :class="{ sweep: phase >= 4 }">
-        <span class="brand-text">Innerly</span>
-      </div>
-      <span class="brand-tagline">Reflect deeper, grow stronger.</span>
-
-      <button
-        class="start-btn"
-        :class="{ show: phase >= 6 }"
-        @click="handleStart"
+        class="theme-toggle"
+        @click="toggleTheme"
+        :class="{ 'is-dark': isDark }"
       >
-        Start Your Inner Space
-      </button>
+        <div class="toggle-light-scene">
+          <div class="cloud cloud-1"></div>
+          <div class="cloud cloud-2"></div>
+        </div>
+        <div class="toggle-dark-scene">
+          <div class="tstar tstar-1"></div>
+          <div class="tstar tstar-2"></div>
+          <div class="tstar tstar-3"></div>
+          <div class="tstar tstar-4"></div>
+        </div>
+        <div class="toggle-knob">
+          <div class="crater crater-1"></div>
+          <div class="crater crater-2"></div>
+          <div class="crater crater-3"></div>
+          <div class="sun-glow"></div>
+        </div>
+      </div>
+
+      <div class="bg-overlay"></div>
+
+      <div class="ambient" :class="{ active: phase >= 5 }">
+        <div
+          class="amb-spark"
+          v-for="i in 18"
+          :key="'a' + i"
+          :style="getAmbientStyle(i)"
+        ></div>
+      </div>
+
+      <div class="fog-scene" :class="{ active: phase >= 5 }">
+        <div class="fog-blob fog-blob-1"></div>
+        <div class="fog-blob fog-blob-2"></div>
+        <div class="fog-blob fog-blob-3"></div>
+        <div class="fog-blob fog-blob-4"></div>
+      </div>
+
+      <div class="stage">
+        <div class="ripple ripple-1" :class="{ active: phase >= 2 }"></div>
+        <div class="ripple ripple-2" :class="{ active: phase >= 2 }"></div>
+        <template v-if="showSparks1">
+          <div
+            v-for="i in 20"
+            :key="'s' + i"
+            class="spark"
+            :style="getSparkStyle(i, 20)"
+          ></div>
+        </template>
+        <template v-if="showSparks2">
+          <div
+            v-for="i in 18"
+            :key="'b' + i"
+            class="spark spark-burst"
+            :style="getSparkStyle(i, 18)"
+          ></div>
+        </template>
+        <div class="portal" :class="portalClass"></div>
+        <div class="logo-wrapper" :class="{ revealed: phase >= 3 }">
+          <img src="/logo.png" alt="Innerly Logo" class="logo-img" />
+        </div>
+      </div>
+
+      <div class="brand" :class="{ visible: phase >= 4 }">
+        <div class="brand-text-wrap" :class="{ sweep: phase >= 4 }">
+          <span class="brand-text">Innerly</span>
+        </div>
+        <span class="brand-tagline">Reflect deeper, grow stronger.</span>
+        <button
+          class="start-btn"
+          :class="{ show: phase >= 6 }"
+          @click="handleStart"
+        >
+          Start Your Inner Space
+        </button>
+      </div>
+
+      <!-- ══ CD PLAYER ══ -->
+      <div class="cd-player" :class="{ 'is-dark': isDark }">
+        <!-- Autoplay notice (shown when autoplay blocked) -->
+        <div v-if="showAutoplayHint" class="autoplay-hint" @click="startMusic">
+          <span class="hint-icon">♪</span>
+          <span class="hint-text">tap to play music</span>
+        </div>
+
+        <!-- The CD disc -->
+        <div
+          class="cd-disc"
+          :class="{ spinning: isPlaying }"
+          @click="toggleMusic"
+        >
+          <!-- Outer ring grooves -->
+          <div class="cd-groove g1"></div>
+          <div class="cd-groove g2"></div>
+          <div class="cd-groove g3"></div>
+          <div class="cd-groove g4"></div>
+          <!-- Rainbow sheen -->
+          <div class="cd-sheen"></div>
+          <!-- Doodle decorations (like the photo) -->
+          <div class="cd-deco">
+            <div class="deco-text title-text">innerly</div>
+            <div class="deco-star s1">✦</div>
+            <div class="deco-star s2">✦</div>
+            <div class="deco-circle c1"></div>
+            <div class="deco-circle c2"></div>
+            <div class="deco-squiggle">〰</div>
+          </div>
+          <!-- Center hole + pause/play button -->
+          <div class="cd-center">
+            <div class="cd-hub">
+              <div class="cd-btn-icon">
+                <svg
+                  v-if="isPlaying"
+                  viewBox="0 0 20 20"
+                  width="14"
+                  height="14"
+                >
+                  <rect
+                    x="3"
+                    y="3"
+                    width="5"
+                    height="14"
+                    rx="1.5"
+                    fill="currentColor"
+                  />
+                  <rect
+                    x="12"
+                    y="3"
+                    width="5"
+                    height="14"
+                    rx="1.5"
+                    fill="currentColor"
+                  />
+                </svg>
+                <svg v-else viewBox="0 0 20 20" width="14" height="14">
+                  <polygon points="4,2 18,10 4,18" fill="currentColor" />
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Label below -->
+        <div class="cd-label">
+          <span v-if="isPlaying">▶ playing</span>
+          <span v-else>click to play ♪</span>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -92,6 +167,7 @@
 <script setup>
 import { ref, computed, onMounted } from "vue";
 
+const props = defineProps({ audioEl: Object });
 const emit = defineEmits(["done"]);
 const phase = ref(0);
 const visible = ref(true);
@@ -99,11 +175,36 @@ const showSparks1 = ref(false);
 const showSparks2 = ref(false);
 const isDark = ref(false);
 
+const fadeOutBlack = ref(false);
+const screenVisible = ref(false);
+
+const isPlaying = ref(false);
+const showAutoplayHint = ref(false);
+
+// gunakan audio dari App.vue (persists antar stage)
+const audio = () => props.audioEl;
+
 function toggleTheme() {
   isDark.value = !isDark.value;
 }
 function handleStart() {
-  emit("done");
+  emit("done", isDark.value);
+}
+
+function startMusic() {
+  if (!audio()) return;
+  showAutoplayHint.value = false;
+  fadeInMusic(audio());
+}
+
+function toggleMusic() {
+  if (!audio()) return;
+  if (isPlaying.value) {
+    audio().pause();
+    isPlaying.value = false;
+  } else {
+    fadeInMusic(audio());
+  }
 }
 
 const portalClass = computed(() => {
@@ -125,8 +226,7 @@ function getSparkStyle(i, total) {
 }
 
 function getAmbientStyle(i) {
-  const angle = Math.random() * 360;
-  const x = 10 + ((i * 83) % 80); // spread across screen %
+  const x = 10 + ((i * 83) % 80);
   const y = 10 + ((i * 67) % 80);
   const dur = 4 + (i % 5) * 1.2;
   const delay = (i * 0.37) % 3;
@@ -141,49 +241,92 @@ function getAmbientStyle(i) {
   };
 }
 
+function fadeInMusic(audio, targetVolume = 0.55, durationMs = 2500) {
+  audio.volume = 0;
+  audio
+    .play()
+    .then(() => {
+      isPlaying.value = true;
+      const steps = 60;
+      const interval = durationMs / steps;
+      const volumeStep = targetVolume / steps;
+      let step = 0;
+      const timer = setInterval(() => {
+        step++;
+        audio.volume = Math.min(targetVolume, volumeStep * step);
+        if (step >= steps) clearInterval(timer);
+      }, interval);
+    })
+    .catch(() => {
+      showAutoplayHint.value = true;
+    });
+}
+
 onMounted(() => {
-  // Phase 1: portal appear
+  // Layar hitam selama 2 detik, baru fade out
+  setTimeout(() => {
+    fadeOutBlack.value = true;
+  }, 2000);
+
+  setTimeout(() => {
+    screenVisible.value = true;
+    if (audio()) {
+      fadeInMusic(audio());
+    }
+  }, 3100);
+
   setTimeout(() => {
     phase.value = 1;
-  }, 300);
-
-  // Phase 2: portal expand + sparks 1
+  }, 3400);
   setTimeout(() => {
     phase.value = 2;
     showSparks1.value = true;
     setTimeout(() => {
       showSparks1.value = false;
     }, 1200);
-  }, 900);
-
-  // Phase 3: logo reveal + sparks 2
+  }, 4000);
   setTimeout(() => {
     phase.value = 3;
     showSparks2.value = true;
     setTimeout(() => {
       showSparks2.value = false;
     }, 1200);
-  }, 2700);
-
-  // Phase 4: brand text muncul
+  }, 5800);
   setTimeout(() => {
     phase.value = 4;
-  }, 3400);
-
-  // Phase 5: ambient fog + sparks aktif (2.5 detik setelah brand)
+  }, 6500);
   setTimeout(() => {
     phase.value = 5;
-  }, 5900);
-
-  // Phase 6: tombol muncul (1.8 detik setelah fog)
+  }, 9000);
   setTimeout(() => {
     phase.value = 6;
-  }, 7700);
+  }, 10800);
 });
 </script>
 
 <style scoped>
 @import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Outfit:wght@300;400;600&display=swap");
+
+.ls-root {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+}
+
+/* ── Black Fade — MUST cover entire viewport including before loading screen renders ── */
+.black-fade {
+  position: fixed;
+  inset: 0;
+  background: #000000;
+  z-index: 999999;
+  opacity: 1;
+  transition: opacity 1s ease;
+  pointer-events: none;
+}
+.black-fade.fade-out {
+  opacity: 0;
+  pointer-events: none;
+}
 
 .loading-screen {
   position: fixed;
@@ -200,6 +343,11 @@ onMounted(() => {
   justify-content: center;
   z-index: 9999;
   overflow: hidden;
+  opacity: 0;
+  transition: opacity 0.9s ease;
+}
+.loading-screen.screen-visible {
+  opacity: 1;
 }
 .loading-screen.dark-mode {
   background: radial-gradient(
@@ -210,7 +358,7 @@ onMounted(() => {
   );
 }
 
-/* ── Toggle ── */
+/* Theme toggle */
 .theme-toggle {
   position: absolute;
   top: 22px;
@@ -414,7 +562,6 @@ onMounted(() => {
   left: 20px;
 }
 
-/* ── bg noise ── */
 .bg-overlay {
   position: absolute;
   inset: 0;
@@ -423,7 +570,6 @@ onMounted(() => {
   background-size: 200px 200px;
 }
 
-/* ── Fog blobs ── */
 .fog-scene {
   position: absolute;
   inset: 0;
@@ -435,15 +581,12 @@ onMounted(() => {
 .fog-scene.active {
   opacity: 1;
 }
-
 .fog-blob {
   position: absolute;
   border-radius: 50%;
   filter: blur(40px);
   animation: fogDrift linear infinite;
 }
-
-/* Light mode fog: soft indigo/lavender blobs */
 .loading-screen:not(.dark-mode) .fog-blob-1 {
   width: 280px;
   height: 180px;
@@ -496,8 +639,6 @@ onMounted(() => {
   animation-duration: 19s;
   animation-delay: -2s;
 }
-
-/* Dark mode fog: purple/navy blobs */
 .dark-mode .fog-blob-1 {
   width: 300px;
   height: 200px;
@@ -509,7 +650,6 @@ onMounted(() => {
     transparent 70%
   );
   animation-duration: 14s;
-  animation-delay: 0s;
 }
 .dark-mode .fog-blob-2 {
   width: 260px;
@@ -550,10 +690,9 @@ onMounted(() => {
   animation-duration: 19s;
   animation-delay: -2s;
 }
-
 @keyframes fogDrift {
   0% {
-    transform: translateX(0px) translateY(0px) scale(1);
+    transform: translateX(0) translateY(0) scale(1);
   }
   25% {
     transform: translateX(18px) translateY(-12px) scale(1.05);
@@ -565,11 +704,10 @@ onMounted(() => {
     transform: translateX(10px) translateY(20px) scale(1.03);
   }
   100% {
-    transform: translateX(0px) translateY(0px) scale(1);
+    transform: translateX(0) translateY(0) scale(1);
   }
 }
 
-/* ── Ambient floating sparks ── */
 .ambient {
   position: absolute;
   inset: 0;
@@ -581,42 +719,34 @@ onMounted(() => {
 .ambient.active {
   opacity: 1;
 }
-
 .amb-spark {
   position: absolute;
   border-radius: 50%;
   animation: ambFloat ease-in-out infinite;
 }
-/* Light mode ambient sparks */
 .loading-screen:not(.dark-mode) .amb-spark {
   background: rgba(120, 100, 170, 0.55);
   box-shadow: 0 0 5px 2px rgba(120, 100, 170, 0.4);
 }
 .loading-screen:not(.dark-mode) .amb-spark:nth-child(3n) {
   background: rgba(160, 140, 200, 0.5);
-  box-shadow: 0 0 6px 2px rgba(160, 140, 200, 0.35);
 }
 .loading-screen:not(.dark-mode) .amb-spark:nth-child(3n + 1) {
   background: rgba(190, 170, 220, 0.45);
-  box-shadow: 0 0 4px 1px rgba(190, 170, 220, 0.3);
 }
-/* Dark mode ambient sparks */
 .dark-mode .amb-spark {
   background: rgba(167, 139, 250, 0.6);
   box-shadow: 0 0 6px 2px rgba(167, 139, 250, 0.4);
 }
 .dark-mode .amb-spark:nth-child(3n) {
   background: rgba(245, 166, 35, 0.55);
-  box-shadow: 0 0 6px 2px rgba(245, 166, 35, 0.4);
 }
 .dark-mode .amb-spark:nth-child(3n + 1) {
   background: rgba(106, 176, 76, 0.5);
-  box-shadow: 0 0 5px 2px rgba(106, 176, 76, 0.35);
 }
-
 @keyframes ambFloat {
   0% {
-    transform: translateY(0px) scale(1);
+    transform: translateY(0) scale(1);
     opacity: 0;
   }
   15% {
@@ -635,7 +765,6 @@ onMounted(() => {
   }
 }
 
-/* ── Stage ── */
 .stage {
   position: relative;
   z-index: 2;
@@ -645,8 +774,6 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
 }
-
-/* ── Ripples ── */
 .ripple {
   position: absolute;
   border-radius: 50%;
@@ -685,7 +812,6 @@ onMounted(() => {
   }
 }
 
-/* ── Sparks ── */
 .spark {
   position: absolute;
   width: 3px;
@@ -698,27 +824,22 @@ onMounted(() => {
 }
 .spark:nth-child(3n) {
   background: #9d8cc0;
-  box-shadow: 0 0 6px 2px rgba(157, 140, 192, 0.9);
   width: 4px;
   height: 4px;
 }
 .spark:nth-child(3n + 1) {
   background: #b8a8d8;
-  box-shadow: 0 0 6px 2px rgba(184, 168, 216, 0.9);
 }
 .dark-mode .spark {
   background: #a78bfa;
-  box-shadow: 0 0 6px 2px rgba(167, 139, 250, 0.9);
 }
 .dark-mode .spark:nth-child(3n) {
   background: #f5a623;
-  box-shadow: 0 0 6px 2px rgba(245, 166, 35, 0.9);
   width: 4px;
   height: 4px;
 }
 .dark-mode .spark:nth-child(3n + 1) {
   background: #6ab04c;
-  box-shadow: 0 0 6px 2px rgba(106, 176, 76, 0.9);
 }
 .spark-burst {
   width: 4px;
@@ -743,7 +864,6 @@ onMounted(() => {
   }
 }
 
-/* ── Portal ── */
 .portal {
   position: absolute;
   border-radius: 50%;
@@ -831,7 +951,6 @@ onMounted(() => {
   }
 }
 
-/* ── Logo ── */
 .logo-wrapper {
   position: absolute;
   width: 0;
@@ -891,9 +1010,8 @@ onMounted(() => {
   mix-blend-mode: lighten;
 }
 
-/* ── Brand ── */
 .brand {
-  margin-top: -70px;
+  margin-top: -110px;
   text-align: center;
   opacity: 0;
   transform: translateY(10px);
@@ -910,7 +1028,6 @@ onMounted(() => {
   opacity: 1;
   transform: translateY(0);
 }
-
 .brand-text-wrap {
   display: inline-block;
 }
@@ -954,7 +1071,6 @@ onMounted(() => {
     opacity: 1;
   }
 }
-
 .brand-text {
   display: block;
   font-family: "Playfair Display", Georgia, serif;
@@ -980,7 +1096,6 @@ onMounted(() => {
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
-
 .brand-tagline {
   display: block;
   font-family: "Outfit", sans-serif;
@@ -995,7 +1110,6 @@ onMounted(() => {
   color: rgba(106, 176, 76, 0.7);
 }
 
-/* ── Start button ── */
 .start-btn {
   margin-top: 30px;
   padding: 13px 36px;
@@ -1034,10 +1148,6 @@ onMounted(() => {
 }
 .start-btn:active {
   transform: translateY(2px);
-  box-shadow:
-    0 2px 0 rgba(140, 100, 60, 0.2),
-    0 3px 10px rgba(100, 70, 40, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 .dark-mode .start-btn {
   background: linear-gradient(160deg, #2a1f40 0%, #1e1530 100%);
@@ -1050,17 +1160,279 @@ onMounted(() => {
 }
 .dark-mode .start-btn:hover {
   background: linear-gradient(160deg, #341e54 0%, #26183e 100%);
-  box-shadow:
-    0 5px 0 rgba(108, 92, 231, 0.35),
-    0 10px 30px rgba(167, 139, 250, 0.2),
-    inset 0 1px 0 rgba(167, 139, 250, 0.2);
   transform: translateY(-2px);
 }
-.dark-mode .start-btn:active {
-  transform: translateY(2px);
+
+/* ══════════════════════════════════
+   CD PLAYER
+══════════════════════════════════ */
+.cd-player {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Autoplay blocked hint */
+.autoplay-hint {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(74, 63, 122, 0.9);
+  color: #e8e0f8;
+  font-family: "Outfit", sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  padding: 5px 10px;
+  border-radius: 20px;
+  cursor: pointer;
+  animation: hintPulse 2s ease-in-out infinite;
+  backdrop-filter: blur(8px);
+  white-space: nowrap;
+}
+.cd-player.is-dark .autoplay-hint {
+  background: rgba(108, 92, 231, 0.85);
+}
+.hint-icon {
+  font-size: 13px;
+}
+@keyframes hintPulse {
+  0%,
+  100% {
+    opacity: 0.85;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.03);
+  }
+}
+
+/* THE CD DISC */
+.cd-disc {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  cursor: pointer;
+  position: relative;
+  /* Iridescent CD base — silver-white with shimmer */
+  background:
+    conic-gradient(
+      from 0deg,
+      rgba(255, 220, 240, 0.6) 0deg,
+      rgba(200, 220, 255, 0.7) 40deg,
+      rgba(220, 255, 220, 0.6) 80deg,
+      rgba(255, 255, 200, 0.7) 120deg,
+      rgba(240, 200, 255, 0.6) 160deg,
+      rgba(200, 240, 255, 0.7) 200deg,
+      rgba(255, 220, 200, 0.6) 240deg,
+      rgba(220, 255, 240, 0.7) 280deg,
+      rgba(255, 200, 220, 0.6) 320deg,
+      rgba(255, 220, 240, 0.6) 360deg
+    ),
+    radial-gradient(
+      circle at 50% 50%,
+      #ffffff 0%,
+      #e8e8f0 30%,
+      #d0d0e0 60%,
+      #c0c0d8 100%
+    );
+  background-blend-mode: overlay, normal;
   box-shadow:
-    0 2px 0 rgba(108, 92, 231, 0.25),
-    0 3px 12px rgba(108, 92, 231, 0.12),
-    inset 0 1px 0 rgba(167, 139, 250, 0.1);
+    0 0 0 1.5px rgba(160, 140, 200, 0.4),
+    0 6px 24px rgba(74, 63, 122, 0.35),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.6);
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.cd-disc:hover {
+  box-shadow:
+    0 0 0 1.5px rgba(160, 140, 200, 0.6),
+    0 10px 32px rgba(74, 63, 122, 0.55),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.8);
+  transform: scale(1.05);
+}
+.cd-disc.spinning {
+  animation: cdSpin 3s linear infinite;
+}
+@keyframes cdSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+.cd-disc.spinning:hover {
+  transform: rotate(0deg) scale(1.05);
+}
+
+/* Grooves — concentric rings */
+.cd-groove {
+  position: absolute;
+  border-radius: 50%;
+  border: 0.5px solid rgba(140, 120, 180, 0.25);
+  pointer-events: none;
+}
+.g1 {
+  width: 82px;
+  height: 82px;
+}
+.g2 {
+  width: 70px;
+  height: 70px;
+}
+.g3 {
+  width: 56px;
+  height: 56px;
+  border-color: rgba(140, 120, 180, 0.18);
+}
+.g4 {
+  width: 44px;
+  height: 44px;
+  border-color: rgba(140, 120, 180, 0.15);
+}
+
+/* Rainbow sheen overlay */
+.cd-sheen {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 45deg,
+    transparent 0deg,
+    rgba(255, 120, 120, 0.15) 30deg,
+    rgba(255, 200, 80, 0.18) 60deg,
+    rgba(100, 220, 100, 0.15) 90deg,
+    rgba(80, 180, 255, 0.18) 120deg,
+    rgba(180, 100, 255, 0.15) 150deg,
+    transparent 180deg,
+    rgba(255, 120, 120, 0.08) 210deg,
+    transparent 360deg
+  );
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+
+/* Doodle decorations — like the photo CD */
+.cd-deco {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  overflow: hidden;
+}
+.deco-text.title-text {
+  position: absolute;
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: 9px;
+  font-weight: 700;
+  font-style: italic;
+  color: rgba(60, 40, 100, 0.75);
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  letter-spacing: 0.08em;
+}
+.deco-star {
+  position: absolute;
+  font-size: 8px;
+  color: rgba(80, 50, 140, 0.6);
+  line-height: 1;
+}
+.s1 {
+  top: 18px;
+  left: 12px;
+  font-size: 7px;
+}
+.s2 {
+  bottom: 16px;
+  right: 10px;
+  font-size: 6px;
+}
+.deco-circle {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgba(100, 70, 160, 0.35);
+}
+.c1 {
+  width: 10px;
+  height: 10px;
+  bottom: 14px;
+  left: 14px;
+}
+.c2 {
+  width: 7px;
+  height: 7px;
+  top: 20px;
+  right: 15px;
+  border-color: rgba(180, 100, 100, 0.3);
+}
+.deco-squiggle {
+  position: absolute;
+  font-size: 10px;
+  color: rgba(80, 130, 80, 0.4);
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* Center hub + play/pause button */
+.cd-center {
+  position: absolute;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cd-hub {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, #f0ecff, #d0c8f0, #a090d0);
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  box-shadow:
+    0 0 0 2px rgba(120, 100, 180, 0.35),
+    inset 0 1px 3px rgba(255, 255, 255, 0.8),
+    inset 0 -1px 2px rgba(100, 80, 160, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
+}
+.cd-disc:hover .cd-hub {
+  background: radial-gradient(circle at 40% 35%, #ffffff, #e8e0ff, #c0b0e8);
+}
+.cd-btn-icon {
+  color: rgba(60, 40, 100, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+/* Label below CD */
+.cd-label {
+  font-family: "Outfit", sans-serif;
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  color: rgba(74, 63, 122, 0.65);
+  text-align: center;
+  white-space: nowrap;
+}
+.cd-player.is-dark .cd-label {
+  color: rgba(167, 139, 250, 0.7);
 }
 </style>
