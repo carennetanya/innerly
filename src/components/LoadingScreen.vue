@@ -188,6 +188,17 @@ function toggleTheme() {
   isDark.value = !isDark.value;
 }
 function handleStart() {
+  // Klik user = interaksi valid, langsung play di sini sebelum pindah stage
+  // supaya bypass browser autoplay policy waktu hosting
+  if (audio() && !isPlaying.value) {
+    audio().volume = 0.55;
+    audio()
+      .play()
+      .then(() => {
+        isPlaying.value = true;
+      })
+      .catch(() => {});
+  }
   emit("done", isDark.value);
 }
 
@@ -271,7 +282,28 @@ onMounted(() => {
   setTimeout(() => {
     screenVisible.value = true;
     if (audio()) {
-      fadeInMusic(audio());
+      // Coba autoplay — berhasil di localhost, di hosting mungkin diblokir browser
+      // Kalau gagal, musik akan play saat user klik tombol Start (handleStart)
+      audio().volume = 0;
+      audio()
+        .play()
+        .then(() => {
+          isPlaying.value = true;
+          // fade in volume
+          const steps = 60;
+          const interval = 2500 / steps;
+          const targetVol = 0.55;
+          let step = 0;
+          const timer = setInterval(() => {
+            step++;
+            audio().volume = Math.min(targetVol, (targetVol / steps) * step);
+            if (step >= steps) clearInterval(timer);
+          }, interval);
+        })
+        .catch(() => {
+          // Autoplay diblokir — musik akan nyala saat user klik Start
+          showAutoplayHint.value = false; // sembunyikan hint, Start button jadi trigger-nya
+        });
     }
   }, 3100);
 
