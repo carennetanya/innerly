@@ -98,10 +98,22 @@
         <button
           class="start-btn"
           :class="{ show: phase >= 6 }"
-          @click="handleStart"
+          @click="handleStart(false)"
         >
           Start Your Inner Space
         </button>
+
+        <!-- Skip Intro - as text link below button -->
+        <Transition name="skip-fade">
+          <span
+            v-if="showSkip"
+            class="skip-intro-text"
+            :class="{ 'is-dark': isDark }"
+            @click="handleStart(true)"
+          >
+            Lewati Intro ↗
+          </span>
+        </Transition>
       </div>
 
       <!-- ══ CD PLAYER ══ -->
@@ -197,8 +209,8 @@ const modePicked = ref(false);
 
 const isPlaying = ref(false);
 const showAutoplayHint = ref(false);
+const showSkip = ref(false);
 
-// gunakan audio dari App.vue (persists antar stage)
 const audio = () => props.audioEl;
 
 function toggleTheme() {
@@ -209,11 +221,9 @@ function pickMode(dark) {
   if (modePicked.value) return;
   modePicked.value = true;
   isDark.value = dark;
-  // User interaksi → play musik langsung (bypass autoplay policy)
   if (audio()) {
     fadeInMusic(audio());
   }
-  // Sembunyikan picker, fade out hitam, mulai animasi
   pickerVisible.value = false;
   setTimeout(() => {
     fadeOutBlack.value = true;
@@ -221,7 +231,9 @@ function pickMode(dark) {
   setTimeout(() => {
     screenVisible.value = true;
   }, 1400);
-  // Geser semua phase relatif dari saat user pilih
+  setTimeout(() => {
+    showSkip.value = true;
+  }, 4100);
   setTimeout(() => {
     phase.value = 1;
   }, 1700);
@@ -250,8 +262,8 @@ function pickMode(dark) {
   }, 9100);
 }
 
-function handleStart() {
-  emit("done", isDark.value);
+function handleStart(skipIntro = false) {
+  emit("done", isDark.value, skipIntro);
 }
 
 function startMusic() {
@@ -326,7 +338,6 @@ function fadeInMusic(audio, targetVolume = 0.55, durationMs = 2500) {
 }
 
 onMounted(() => {
-  // Tampilkan mode picker setelah 600ms (beri waktu hitam render dulu)
   setTimeout(() => {
     pickerVisible.value = true;
   }, 600);
@@ -420,7 +431,7 @@ onMounted(() => {
   line-height: 1;
 }
 
-/* ── Black Fade — MUST cover entire viewport including before loading screen renders ── */
+/* Black Fade */
 .black-fade {
   position: fixed;
   inset: 0;
@@ -1132,8 +1143,8 @@ onMounted(() => {
   }
 }
 .logo-img {
-  width: 100%;
-  height: 100%;
+  width: 40%;
+  height: 40%;
   object-fit: contain;
   mix-blend-mode: multiply;
 }
@@ -1233,7 +1244,7 @@ onMounted(() => {
   font-weight: 300;
   font-size: 0.72rem;
   letter-spacing: 0.22em;
-  color: rgba(74, 63, 122, 0.6);
+  color: rgba(106, 176, 76, 0.7);
   margin-top: 4px;
   text-transform: uppercase;
 }
@@ -1294,9 +1305,7 @@ onMounted(() => {
   transform: translateY(-2px);
 }
 
-/* ══════════════════════════════════
-   CD PLAYER
-══════════════════════════════════ */
+/* CD PLAYER */
 .cd-player {
   position: fixed;
   bottom: 20px;
@@ -1455,7 +1464,6 @@ onMounted(() => {
   pointer-events: none;
 }
 
-/* Doodle decorations — like the photo CD */
 .cd-deco {
   position: absolute;
   inset: 0;
@@ -1565,5 +1573,79 @@ onMounted(() => {
 }
 .cd-player.is-dark .cd-label {
   color: rgba(167, 139, 250, 0.7);
+}
+
+/* ══ Skip Intro Button ══ */
+.skip-intro-btn {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 10001;
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  color: rgba(60, 40, 100, 0.75);
+  font-family: "Outfit", sans-serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  padding: 8px 16px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 12px rgba(74, 63, 122, 0.12);
+}
+.skip-intro-btn:hover {
+  background: rgba(255, 255, 255, 0.35);
+  color: rgba(60, 40, 100, 1);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(74, 63, 122, 0.2);
+}
+.skip-intro-btn.is-dark {
+  background: rgba(30, 20, 60, 0.45);
+  border-color: rgba(167, 139, 250, 0.25);
+  color: rgba(200, 185, 240, 0.8);
+}
+.skip-intro-btn.is-dark:hover {
+  background: rgba(50, 35, 90, 0.65);
+  color: rgba(220, 210, 255, 1);
+}
+
+/* ══ Skip Intro Text (below button) ══ */
+.skip-intro-text {
+  display: block;
+  margin-top: 12px;
+  font-family: "Outfit", sans-serif;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: rgba(60, 40, 100, 0.6);
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+.skip-intro-text:hover {
+  color: rgba(60, 40, 100, 1);
+  text-decoration: underline;
+}
+.skip-intro-text.is-dark {
+  color: rgba(200, 185, 240, 0.6);
+}
+.skip-intro-text.is-dark:hover {
+  color: rgba(220, 210, 255, 1);
+}
+.skip-fade-enter-active {
+  transition:
+    opacity 0s,
+    transform 0s;
+}
+.skip-fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+.skip-fade-enter-from {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+.skip-fade-leave-to {
+  opacity: 0;
 }
 </style>

@@ -7,7 +7,26 @@
     </div>
 
     <Transition name="gs-word" mode="out-in">
-      <div class="gs-phrase" :key="currentIndex">
+      <!-- Language picker step — shown FIRST -->
+      <div v-if="showLangPicker" key="lang" class="gs-lang-picker">
+        <p class="gs-lang-title">Choose your language</p>
+        <p class="gs-lang-sub">Pilih bahasa kamu</p>
+        <div class="gs-lang-btns">
+          <button class="gs-lang-btn" @click="chooseLang('en')">
+            <span>English</span>
+          </button>
+          <button class="gs-lang-btn" @click="chooseLang('id')">
+            <span>Indonesia</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Phrases shown AFTER language chosen -->
+      <div
+        v-else-if="showPhrases && current"
+        class="gs-phrase"
+        :key="currentIndex"
+      >
         <p class="gs-line1">{{ current.line1 }}</p>
         <p class="gs-line2" v-if="current.line2">{{ current.line2 }}</p>
       </div>
@@ -23,7 +42,7 @@
       ></div>
     </div>
 
-    <div class="gs-dots">
+    <div class="gs-dots" v-if="showPhrases && phrases.length">
       <span
         v-for="i in phrases.length"
         :key="i"
@@ -35,7 +54,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, computed, onMounted } from "vue";
 
 const props = defineProps({ isDark: Boolean });
 const emit = defineEmits(["done"]);
@@ -56,30 +75,62 @@ function getSparkStyle(i) {
   };
 }
 
-const phrases = [
-  { line1: "Hi there", line2: "Welcome to your inner space." },
-  { line1: "This is your space", line2: "to reflect, feel, and grow." },
-  { line1: "No judgment here.", line2: "Just you and your thoughts." },
-  { line1: "Ready?", line2: null },
-];
+// Step 1: language picker
+const showLangPicker = ref(true);
+const selectedLang = ref(null);
 
+// Step 2: phrases (set after lang chosen)
+const phrasesMap = {
+  en: [
+    { line1: "Hey, I'm Caly", line2: "Welcome to your inner space." },
+    { line1: "This is your space", line2: "to reflect, feel, and grow." },
+    { line1: "No judgment here.", line2: "Just you and your thoughts." },
+    { line1: "Ready?", line2: null },
+  ],
+  id: [
+    { line1: "Hei, Aku Caly", line2: "Selamat datang di ruang batinmu." },
+    {
+      line1: "Ini ruangmu",
+      line2: "untuk merenung, merasakan, dan bertumbuh.",
+    },
+    {
+      line1: "Tidak ada penghakiman di sini.",
+      line2: "Hanya kamu dan pikiranmu.",
+    },
+    { line1: "Siap?", line2: null },
+  ],
+};
+
+const phrases = ref([]);
 const currentIndex = ref(0);
-const current = ref(phrases[0]);
+const current = ref(null);
+const showPhrases = ref(false);
 
-onMounted(() => {
-  let i = 0;
-  const next = () => {
-    i++;
-    if (i < phrases.length) {
-      currentIndex.value = i;
-      current.value = phrases[i];
-      setTimeout(next, i === phrases.length - 1 ? 2200 : 2800);
-    } else {
-      setTimeout(() => emit("done"), 800);
-    }
-  };
-  setTimeout(next, 2800);
-});
+function chooseLang(lang) {
+  selectedLang.value = lang;
+  showLangPicker.value = false;
+
+  // Small delay then start phrases
+  setTimeout(() => {
+    phrases.value = phrasesMap[lang];
+    current.value = phrases.value[0];
+    currentIndex.value = 0;
+    showPhrases.value = true;
+
+    let i = 0;
+    const next = () => {
+      i++;
+      if (i < phrases.value.length) {
+        currentIndex.value = i;
+        current.value = phrases.value[i];
+        setTimeout(next, i === phrases.value.length - 1 ? 2200 : 2800);
+      } else {
+        setTimeout(() => emit("done", lang), 800);
+      }
+    };
+    setTimeout(next, 2800);
+  }, 500);
+}
 </script>
 
 <style>
@@ -231,6 +282,81 @@ onMounted(() => {
 }
 .greeting-screen[data-dark="true"] .gs-line2 {
   color: rgba(167, 139, 250, 0.65);
+}
+
+/* Language picker */
+.gs-lang-picker {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 0 32px;
+}
+.gs-lang-title {
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: clamp(1.5rem, 4vw, 2.2rem);
+  font-weight: 700;
+  margin: 0;
+  color: #2d2460;
+}
+.greeting-screen[data-dark="true"] .gs-lang-title {
+  background: linear-gradient(135deg, #a78bfa 0%, #f5a623 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.gs-lang-sub {
+  font-family: "Outfit", sans-serif;
+  font-size: clamp(0.85rem, 2.2vw, 1rem);
+  font-weight: 300;
+  margin: 0;
+  color: rgba(74, 63, 122, 0.6);
+  letter-spacing: 0.02em;
+}
+.greeting-screen[data-dark="true"] .gs-lang-sub {
+  color: rgba(167, 139, 250, 0.6);
+}
+.gs-lang-btns {
+  display: flex;
+  gap: 16px;
+  margin-top: 8px;
+}
+.gs-lang-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 28px;
+  border-radius: 50px;
+  font-family: "Outfit", sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  border: 2px solid rgba(100, 80, 140, 0.25);
+  background: rgba(255, 255, 255, 0.55);
+  color: #2d2460;
+  cursor: pointer;
+  transition: all 0.22s ease;
+  backdrop-filter: blur(6px);
+  box-shadow: 0 4px 16px rgba(74, 63, 122, 0.12);
+}
+.gs-lang-btn:hover {
+  background: rgba(255, 255, 255, 0.85);
+  border-color: rgba(100, 80, 140, 0.55);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(74, 63, 122, 0.22);
+}
+.gs-lang-btn:active {
+  transform: translateY(0);
+}
+.greeting-screen[data-dark="true"] .gs-lang-btn {
+  background: rgba(30, 20, 55, 0.65);
+  border-color: rgba(167, 139, 250, 0.3);
+  color: #e8e0f8;
+}
+.greeting-screen[data-dark="true"] .gs-lang-btn:hover {
+  background: rgba(50, 35, 85, 0.85);
+  border-color: rgba(167, 139, 250, 0.65);
 }
 
 /* sparks */

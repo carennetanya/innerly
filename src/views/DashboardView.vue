@@ -46,7 +46,7 @@
           <span class="streak-fire">🔥</span>
           <div>
             <div class="streak-num">{{ streakDays }}</div>
-            <div class="streak-label">day streak</div>
+            <div class="streak-label">{{ t.streak }}</div>
           </div>
         </div>
       </div>
@@ -109,10 +109,8 @@
         <div class="welcome-banner">
           <div class="welcome-text">
             <p class="welcome-greeting">{{ displayName }} 👋</p>
-            <h2 class="welcome-name">How are you feeling today?</h2>
-            <p class="welcome-sub">
-              Take a moment to reflect. Your inner space is ready.
-            </p>
+            <h2 class="welcome-name">{{ t.howFeeling }}</h2>
+            <p class="welcome-sub">{{ t.takeAMoment }}</p>
           </div>
           <div class="welcome-art">
             <img src="/logo.png" alt="" class="welcome-logo-art" />
@@ -120,7 +118,7 @@
         </div>
 
         <!-- Quick mood pick -->
-        <div class="section-title">Quick Mood Check</div>
+        <div class="section-title">{{ t.quickMoodCheck }}</div>
         <div class="mood-row">
           <button
             v-for="m in moods"
@@ -141,8 +139,8 @@
           <div class="card card-accent" @click="activeView = 'journal'">
             <div class="card-icon">📝</div>
             <div class="card-body">
-              <div class="card-title">Start Journaling</div>
-              <div class="card-sub">Guided Gibbs' Reflection • 6 steps</div>
+              <div class="card-title">{{ t.startJournaling }}</div>
+              <div class="card-sub">{{ t.journalSub }}</div>
             </div>
             <div class="card-arrow">→</div>
           </div>
@@ -151,8 +149,8 @@
           <div class="card">
             <div class="card-icon">🔥</div>
             <div class="card-body">
-              <div class="card-title">{{ streakDays }} Day Streak</div>
-              <div class="card-sub">Keep it going!</div>
+              <div class="card-title">{{ streakDays }} {{ t.dayStreak }}</div>
+              <div class="card-sub">{{ t.keepGoing }}</div>
             </div>
             <div class="mini-bar">
               <div
@@ -168,7 +166,7 @@
           <div class="card">
             <div class="card-icon">✨</div>
             <div class="card-body">
-              <div class="card-title">Today's Challenge</div>
+              <div class="card-title">{{ t.todaysChallenge }}</div>
               <div class="card-sub card-challenge">{{ todayChallenge }}</div>
             </div>
           </div>
@@ -177,15 +175,15 @@
           <div class="card" @click="activeView = 'insights'">
             <div class="card-icon">📊</div>
             <div class="card-body">
-              <div class="card-title">Weekly Report</div>
-              <div class="card-sub">See your mood pattern</div>
+              <div class="card-title">{{ t.weeklyReport }}</div>
+              <div class="card-sub">{{ t.seePattern }}</div>
             </div>
             <div class="card-arrow">→</div>
           </div>
         </div>
 
         <!-- Mood week mini chart -->
-        <div class="section-title">This Week's Mood</div>
+        <div class="section-title">{{ t.thisWeeksMood }}</div>
         <div class="week-mood">
           <div v-for="(day, i) in weekMoods" :key="i" class="week-day">
             <span class="week-emoji">{{ day.emoji }}</span>
@@ -205,6 +203,7 @@
         <GuidedJournal
           :is-dark="isDark"
           :initial-trigger="props.initialReflection"
+          :lang="props.lang"
           @back="activeView = 'dashboard'"
           @done="onJournalDone"
         />
@@ -213,8 +212,8 @@
       <!-- Mood tracker placeholder -->
       <div class="content coming-soon" v-else-if="activeView === 'mood'">
         <div class="cs-icon">🌈</div>
-        <h2>Mood Tracker</h2>
-        <p>Track your emotions daily & see patterns — coming next!</p>
+        <h2>{{ t.moodTrackerTitle }}</h2>
+        <p>{{ t.moodTrackerDesc }}</p>
         <button class="btn-primary" @click="activeView = 'dashboard'">
           ← Back
         </button>
@@ -223,8 +222,8 @@
       <!-- Insights placeholder -->
       <div class="content coming-soon" v-else-if="activeView === 'insights'">
         <div class="cs-icon">💡</div>
-        <h2>Insights & Summary</h2>
-        <p>AI-powered emotional pattern recognition — coming next!</p>
+        <h2>{{ t.insightsTitle }}</h2>
+        <p>{{ t.insightsDesc }}</p>
         <button class="btn-primary" @click="activeView = 'dashboard'">
           ← Back
         </button>
@@ -234,7 +233,7 @@
       <div class="content coming-soon" v-else>
         <div class="cs-icon">🚧</div>
         <h2>{{ currentNavItem?.label }}</h2>
-        <p>This feature is being built — stay tuned!</p>
+        <p>{{ t.comingSoon }}</p>
         <button class="btn-primary" @click="activeView = 'dashboard'">
           ← Back
         </button>
@@ -252,7 +251,125 @@ const props = defineProps({
   userName: { type: String, default: "" },
   initialReflection: { type: String, default: "" },
   initialMood: { type: Object, default: null },
+  lang: { type: String, default: "en" },
 });
+
+const i18n = {
+  en: {
+    streak: "day streak",
+    howFeeling: "How are you feeling today?",
+    takeAMoment: "Take a moment to reflect. Your inner space is ready.",
+    quickMoodCheck: "Quick Mood Check",
+    startJournaling: "Start Journaling",
+    journalSub: "Guided Gibbs\' Reflection • 6 steps",
+    dayStreak: "Day Streak",
+    keepGoing: "Keep it going!",
+    todaysChallenge: "Today\'s Challenge",
+    weeklyReport: "Weekly Report",
+    seePattern: "See your mood pattern",
+    thisWeeksMood: "This Week\'s Mood",
+    moodTrackerTitle: "Mood Tracker",
+    moodTrackerDesc: "Track your emotions daily & see patterns — coming next!",
+    insightsTitle: "Insights & Summary",
+    insightsDesc: "AI-powered emotional pattern recognition — coming next!",
+    comingSoon: "This feature is being built — stay tuned!",
+    back: "← Back",
+    nav: {
+      dashboard: "Dashboard",
+      journal: "Guided Journal",
+      mood: "Mood Tracker",
+      insights: "Insights",
+      growth: "Growth Tracker",
+      timeline: "Life Timeline",
+      challenge: "Challenges",
+      reminder: "Reminders",
+    },
+    moods: [
+      { emoji: "😊", label: "Happy", color: "#f5a623" },
+      { emoji: "😌", label: "Calm", color: "#6ab04c" },
+      { emoji: "😔", label: "Sad", color: "#7c6ca8" },
+      { emoji: "😤", label: "Angry", color: "#e74c3c" },
+      { emoji: "😰", label: "Anxious", color: "#e67e22" },
+      { emoji: "😴", label: "Tired", color: "#95a5a6" },
+      { emoji: "🤩", label: "Excited", color: "#f39c12" },
+      { emoji: "😐", label: "Neutral", color: "#a78bfa" },
+    ],
+    weekDays: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+    challenges: [
+      "Write 3 things you\'re grateful for today.",
+      "Reflect on a moment that made you smile this week.",
+      "What\'s one thing you\'d tell your past self?",
+      "Describe a challenge you overcame recently.",
+      "What does your ideal day look like?",
+    ],
+    greeting: (name) => {
+      const h = new Date().getHours();
+      const g =
+        h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+      return name ? g + ", " + name : g;
+    },
+    displayName: (name) => (name ? "Hi, " + name : "Hi there"),
+  },
+  id: {
+    streak: "hari berturut-turut",
+    howFeeling: "Gimana perasaanmu hari ini?",
+    takeAMoment:
+      "Luangkan waktu sejenak untuk merenung. Ruang batinmu sudah siap.",
+    quickMoodCheck: "Cek Mood Cepat",
+    startJournaling: "Mulai Journaling",
+    journalSub: "Refleksi Terpandu Gibbs • 6 langkah",
+    dayStreak: "Hari Berturut-turut",
+    keepGoing: "Pertahankan!",
+    todaysChallenge: "Tantangan Hari Ini",
+    weeklyReport: "Laporan Mingguan",
+    seePattern: "Lihat pola moodmu",
+    thisWeeksMood: "Mood Minggu Ini",
+    moodTrackerTitle: "Pelacak Mood",
+    moodTrackerDesc:
+      "Catat emosimu setiap hari & lihat polanya — segera hadir!",
+    insightsTitle: "Wawasan & Ringkasan",
+    insightsDesc: "Pengenalan pola emosi berbasis AI — segera hadir!",
+    comingSoon: "Fitur ini sedang dibangun — nantikan ya!",
+    back: "← Kembali",
+    nav: {
+      dashboard: "Beranda",
+      journal: "Jurnal Terpandu",
+      mood: "Pelacak Mood",
+      insights: "Wawasan",
+      growth: "Pelacak Pertumbuhan",
+      timeline: "Linimasa Hidup",
+      challenge: "Tantangan",
+      reminder: "Pengingat",
+    },
+    moods: [
+      { emoji: "😊", label: "Senang", color: "#f5a623" },
+      { emoji: "😌", label: "Tenang", color: "#6ab04c" },
+      { emoji: "😔", label: "Sedih", color: "#7c6ca8" },
+      { emoji: "😤", label: "Marah", color: "#e74c3c" },
+      { emoji: "😰", label: "Cemas", color: "#e67e22" },
+      { emoji: "😴", label: "Lelah", color: "#95a5a6" },
+      { emoji: "🤩", label: "Bersemangat", color: "#f39c12" },
+      { emoji: "😐", label: "Biasa aja", color: "#a78bfa" },
+    ],
+    weekDays: ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"],
+    challenges: [
+      "Tulis 3 hal yang kamu syukuri hari ini.",
+      "Renungkan momen yang membuatmu tersenyum minggu ini.",
+      "Apa satu hal yang ingin kamu katakan pada dirimu di masa lalu?",
+      "Ceritakan tantangan yang berhasil kamu lewati belakangan ini.",
+      "Seperti apa hari yang ideal bagimu?",
+    ],
+    greeting: (name) => {
+      const h = new Date().getHours();
+      const g =
+        h < 12 ? "Selamat pagi" : h < 17 ? "Selamat siang" : "Selamat malam";
+      return name ? g + ", " + name : g;
+    },
+    displayName: (name) => (name ? "Hai, " + name : "Hai"),
+  },
+};
+
+const t = computed(() => i18n[props.lang] ?? i18n.en);
 const emit = defineEmits(["toggleTheme"]);
 
 const sidebarCollapsed = ref(false);
@@ -263,99 +380,85 @@ const streakDays = ref(4);
 const navItems = [
   {
     id: "dashboard",
-    label: "Dashboard",
+    label: t.value.nav.dashboard,
     icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>`,
   },
   {
     id: "journal",
-    label: "Guided Journal",
+    label: t.value.nav.journal,
     icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`,
     badge: "New",
   },
   {
     id: "mood",
-    label: "Mood Tracker",
+    label: t.value.nav.mood,
     icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>`,
   },
   {
     id: "insights",
-    label: "Insights",
+    label: t.value.nav.insights,
     icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>`,
   },
   {
     id: "growth",
-    label: "Growth Tracker",
+    label: t.value.nav.growth,
     icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>`,
   },
   {
     id: "timeline",
-    label: "Life Timeline",
+    label: t.value.nav.timeline,
     icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="2" x2="12" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>`,
   },
   {
     id: "challenge",
-    label: "Challenges",
+    label: t.value.nav.challenge,
     icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`,
   },
   {
     id: "reminder",
-    label: "Reminders",
+    label: t.value.nav.reminder,
     icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>`,
   },
 ];
 
-const moods = [
-  { emoji: "😊", label: "Happy", color: "#f5a623" },
-  { emoji: "😌", label: "Calm", color: "#6ab04c" },
-  { emoji: "😔", label: "Sad", color: "#7c6ca8" },
-  { emoji: "😤", label: "Angry", color: "#e74c3c" },
-  { emoji: "😰", label: "Anxious", color: "#e67e22" },
-  { emoji: "😴", label: "Tired", color: "#95a5a6" },
-  { emoji: "🤩", label: "Excited", color: "#f39c12" },
-  { emoji: "😐", label: "Neutral", color: "#a78bfa" },
-];
+const moods = computed(() => t.value.moods);
 
-const weekMoods = [
-  { day: "Mon", emoji: "😔", val: 40, color: "#7c6ca8" },
-  { day: "Tue", emoji: "😌", val: 65, color: "#6ab04c" },
-  { day: "Wed", emoji: "😊", val: 80, color: "#f5a623" },
-  { day: "Thu", emoji: "😤", val: 30, color: "#e74c3c" },
-  { day: "Fri", emoji: "😊", val: 75, color: "#f5a623" },
-  { day: "Sat", emoji: "🤩", val: 90, color: "#f39c12" },
-  { day: "Sun", emoji: "😌", val: 70, color: "#6ab04c" },
-];
+const weekMoods = computed(() => {
+  const days = t.value.weekDays;
+  const data = [
+    { emoji: "😔", val: 40, color: "#7c6ca8" },
+    { emoji: "😌", val: 65, color: "#6ab04c" },
+    { emoji: "😊", val: 80, color: "#f5a623" },
+    { emoji: "😤", val: 30, color: "#e74c3c" },
+    { emoji: "😊", val: 75, color: "#f5a623" },
+    { emoji: "🤩", val: 90, color: "#f39c12" },
+    { emoji: "😌", val: 70, color: "#6ab04c" },
+  ];
+  return data.map((d, i) => ({ ...d, day: days[i] }));
+});
 
-const challenges = [
-  "Write 3 things you're grateful for today.",
-  "Reflect on a moment that made you smile this week.",
-  "What's one thing you'd tell your past self?",
-  "Describe a challenge you overcame recently.",
-  "What does your ideal day look like?",
-];
-const todayChallenge = challenges[new Date().getDay() % challenges.length];
+const todayChallenge = computed(() => {
+  const ch = t.value.challenges;
+  return ch[new Date().getDay() % ch.length];
+});
 
 const currentNavItem = computed(() =>
   navItems.find((n) => n.id === activeView.value),
 );
 
 const todayStr = computed(() => {
-  return new Date().toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  });
+  return new Date().toLocaleDateString(
+    props.lang === "id" ? "id-ID" : "en-US",
+    {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+    },
+  );
 });
 
-const greeting = computed(() => {
-  const h = new Date().getHours();
-  const timeGreet =
-    h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
-  return props.userName ? timeGreet + ", " + props.userName : timeGreet;
-});
-
-const displayName = computed(() => {
-  return props.userName ? "Hi, " + props.userName : "Hi there";
-});
+const greeting = computed(() => t.value.greeting(props.userName));
+const displayName = computed(() => t.value.displayName(props.userName));
 
 function onJournalDone() {
   streakDays.value = streakDays.value + 1;

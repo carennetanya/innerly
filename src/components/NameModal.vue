@@ -5,7 +5,7 @@
         <!-- Book spine -->
         <div class="nm-spine"></div>
 
-        <!-- ═══ LEFT PAGE ═══ -->
+        <!-- LEFT PAGE -->
         <div
           class="nm-page nm-page-left"
           :class="{ 'page-flip-out': isFlipping }"
@@ -14,10 +14,16 @@
             <div v-for="i in 14" :key="i" class="nm-line"></div>
           </div>
           <Transition name="page-content" mode="out-in">
+            <!-- Page 1 left: decorative quote -->
             <div v-if="currentPage === 1" key="l1" class="nm-deco-quote">
               <span class="nm-deco-mark">"</span>
-              <p>Every journey<br />begins with a<br />first word.</p>
+              <p>
+                <span v-for="(line, idx) in t.leftQuote" :key="idx">
+                  {{ line }}<br v-if="idx < t.leftQuote.length - 1" />
+                </span>
+              </p>
             </div>
+            <!-- Page 2 left: greeting -->
             <div
               v-else-if="currentPage === 2"
               key="l2"
@@ -44,34 +50,47 @@
                   />
                 </svg>
               </div>
-              <p class="nm-left-label">Reflecting today</p>
+              <p class="nm-left-label">{{ t.reflectingToday }}</p>
               <p class="nm-left-name">{{ resolvedName }}</p>
               <div class="nm-left-divider"></div>
-              <p class="nm-left-hint">
-                Take your time.<br />There's no rush here.
-              </p>
+              <p class="nm-left-hint">{{ t.leftHint }}</p>
             </div>
+            <!-- Page 3+ left: textarea for this spread's left side -->
             <div
-              v-else-if="currentPage === 3"
-              key="l3"
-              class="nm-overflow-page"
+              v-else
+              :key="'l' + currentPage"
+              class="nm-content nm-content-reflection nm-left-textarea-page"
             >
-              <p class="nm-overflow-label">...continued</p>
-              <div class="nm-overflow-text">{{ reflection }}</div>
+              <p class="nm-eyebrow">{{ t.pageLabel(leftPageNumber) }}</p>
+              <div class="nm-textarea-wrap">
+                <textarea
+                  :ref="(el) => setLeftRef(el)"
+                  v-model="pages[leftPageIndex]"
+                  class="nm-textarea"
+                  :placeholder="t.continueWriting"
+                  @input="onPageInputResize(leftPageIndex, $event)"
+                  @keydown="onPageKeydown(leftPageIndex, $event)"
+                ></textarea>
+              </div>
+              <div class="nm-char-hint" :class="{ overflow: leftOverflowing }">
+                <span v-if="leftOverflowing">{{ t.overflowHint }}</span>
+              </div>
             </div>
           </Transition>
           <div class="nm-page-number">
-            {{ currentPage === 1 ? "i" : currentPage === 2 ? "2" : "4" }}
+            {{
+              currentPage === 1 ? "i" : currentPage === 2 ? "" : leftPageNumber
+            }}
           </div>
         </div>
 
-        <!-- ═══ RIGHT PAGE ═══ -->
+        <!-- RIGHT PAGE -->
         <div class="nm-page nm-page-right">
           <div class="nm-page-lines">
             <div v-for="i in 14" :key="i" class="nm-line"></div>
           </div>
           <Transition name="page-content" mode="out-in">
-            <!-- Page 1: Name -->
+            <!-- Page 1 right: name input -->
             <div v-if="currentPage === 1" key="r1" class="nm-content">
               <div class="nm-quill-wrap">
                 <svg class="nm-quill" viewBox="0 0 40 40" fill="none">
@@ -94,16 +113,16 @@
                   />
                 </svg>
               </div>
-              <p class="nm-eyebrow">Before we begin</p>
-              <h2 class="nm-heading">What shall I<br />call you?</h2>
-              <p class="nm-sub">Your name stays just between us.</p>
+              <p class="nm-eyebrow">{{ t.beforeWeBegin }}</p>
+              <h2 class="nm-heading">{{ t.whatShallICallYou }}</h2>
+              <p class="nm-sub">{{ t.yourNameStays }}</p>
               <div class="nm-input-wrap">
                 <input
                   ref="nameInputRef"
                   v-model="name"
                   type="text"
                   class="nm-input"
-                  placeholder="Your name..."
+                  :placeholder="t.namePlaceholder"
                   maxlength="30"
                   @keydown.enter="goToPage2"
                 />
@@ -115,7 +134,7 @@
                   @click="goToPage2"
                   :disabled="name.trim().length === 0"
                 >
-                  <span>Continue</span>
+                  <span>{{ t.continueBtn }}</span>
                   <svg
                     width="15"
                     height="15"
@@ -128,53 +147,41 @@
                   </svg>
                 </button>
                 <button class="nm-btn-skip" @click="skipAll">
-                  skip for now
+                  {{ t.skipForNow }}
                 </button>
               </div>
             </div>
 
-            <!-- Page 2: Reflection -->
+            <!-- Page 2 right: first reflection textarea -->
             <div
               v-else-if="currentPage === 2"
               key="r2"
               class="nm-content nm-content-reflection"
             >
-              <p class="nm-eyebrow">Page 1 · Reflection</p>
+              <p class="nm-eyebrow">{{ t.page1Label }}</p>
               <h2 class="nm-heading nm-heading-sm">
-                {{ resolvedGreeting }},<br />what's one thing you'd like<br />to
-                reflect on today?
+                {{ resolvedGreeting }},<br />{{ t.whatToReflect }}
               </h2>
               <div class="nm-textarea-wrap">
                 <textarea
                   ref="reflectionRef"
-                  v-model="reflection"
+                  v-model="pages[0]"
                   class="nm-textarea"
-                  placeholder="e.g. Today's presentation in class felt less than ideal..."
-                  @input="onTextareaInput"
-                  @keydown="onTextareaKeydown"
-                  @scroll.prevent="
-                    () => {
-                      if (reflectionRef) reflectionRef.scrollTop = 0;
-                    }
-                  "
+                  :placeholder="t.reflectionPlaceholder"
+                  @input="onPageInputResize(0, $event)"
+                  @keydown="onPageKeydown(0, $event)"
                 ></textarea>
-                <div class="nm-textarea-line"></div>
               </div>
-              <div class="nm-char-hint" :class="{ overflow: isOverflowing }">
-                <span v-if="isOverflowing"
-                  >✦ Your reflection continues on the next page →</span
-                >
-                <span v-else>Write freely — it can be long or short.</span>
+              <div class="nm-char-hint">
+                <span>{{ t.writeFreely }}</span>
               </div>
               <div class="nm-actions">
                 <button
                   class="nm-btn-primary"
-                  @click="handleReflectionContinue"
-                  :disabled="reflection.trim().length === 0"
+                  @click="handleSpreadNext(0)"
+                  :disabled="!pageOverflowing[0]"
                 >
-                  <span>{{
-                    isOverflowing ? "Next page →" : "Let's begin"
-                  }}</span>
+                  <span>{{ t.nextPage }}</span>
                   <svg
                     width="15"
                     height="15"
@@ -185,6 +192,13 @@
                   >
                     <path d="M5 12h14M12 5l7 7-7 7" />
                   </svg>
+                </button>
+                <button
+                  class="nm-btn-done"
+                  @click="handleDone"
+                  :disabled="pages[0].trim().length === 0"
+                >
+                  {{ t.letsBegin }}
                 </button>
                 <button class="nm-btn-ghost" @click="goBackToPage1">
                   ← back
@@ -192,26 +206,37 @@
               </div>
             </div>
 
-            <!-- Page 3: Overflow -->
+            <!-- Page 3+ right: continuation textarea + done button when not overflowing -->
             <div
-              v-else-if="currentPage === 3"
-              key="r3"
+              v-else
+              :key="'r' + currentPage"
               class="nm-content nm-content-reflection"
             >
-              <p class="nm-eyebrow">Page 2 · Continued</p>
-              <h2 class="nm-heading nm-heading-sm">Keep going...</h2>
+              <p class="nm-eyebrow">{{ t.pageLabel(rightPageNumber) }}</p>
+              <h2 class="nm-heading nm-heading-sm">{{ t.keepGoing }}</h2>
               <div class="nm-textarea-wrap">
                 <textarea
-                  ref="overflowRef"
-                  v-model="reflectionOverflow"
+                  :ref="(el) => setRightRef(el)"
+                  v-model="pages[rightPageIndex]"
                   class="nm-textarea"
-                  placeholder="Continue writing here..."
+                  :placeholder="t.continueWriting"
+                  @input="onPageInputResize(rightPageIndex, $event)"
+                  @keydown="onPageKeydown(rightPageIndex, $event)"
                 ></textarea>
-                <div class="nm-textarea-line"></div>
+              </div>
+              <div class="nm-char-hint" :class="{ overflow: rightOverflowing }">
+                <span v-if="rightOverflowing">{{ t.overflowHint }}</span>
               </div>
               <div class="nm-actions">
-                <button class="nm-btn-primary" @click="handleDone">
-                  <span>Done &amp; begin</span>
+                <button
+                  class="nm-btn-primary"
+                  @click="handleSpreadNext(rightPageIndex)"
+                  :disabled="
+                    !rightOverflowing &&
+                    pages[rightPageIndex]?.trim().length === 0
+                  "
+                >
+                  <span>{{ t.nextPage }}</span>
                   <svg
                     width="15"
                     height="15"
@@ -223,14 +248,27 @@
                     <path d="M5 12h14M12 5l7 7-7 7" />
                   </svg>
                 </button>
-                <button class="nm-btn-ghost" @click="goBackToPage2">
+                <button
+                  class="nm-btn-done"
+                  @click="handleDone"
+                  :disabled="allPagesEmpty"
+                >
+                  <span>{{ t.doneBegin }}</span>
+                </button>
+                <button class="nm-btn-ghost" @click="goBackSpread">
                   ← back
                 </button>
               </div>
             </div>
           </Transition>
           <div class="nm-page-number">
-            {{ currentPage === 1 ? "1" : currentPage === 2 ? "3" : "5" }}
+            {{
+              currentPage === 1
+                ? "1"
+                : currentPage === 2
+                  ? "1"
+                  : rightPageNumber
+            }}
           </div>
         </div>
 
@@ -244,7 +282,70 @@
 <script setup>
 import { ref, computed, nextTick, watch } from "vue";
 
-const props = defineProps({ isDark: Boolean });
+const props = defineProps({
+  isDark: Boolean,
+  lang: { type: String, default: "en" },
+});
+
+const i18n = {
+  en: {
+    leftQuote: ["Every journey", "begins with a", "first word."],
+    reflectingToday: "Reflecting today",
+    takeYourTime: "Take your time. There's no rush here.",
+    continued: "...continued",
+    beforeWeBegin: "Before we begin",
+    whatShallICallYou: "What shall I call you?",
+    yourNameStays: "Your name stays just between us.",
+    namePlaceholder: "Your name...",
+    continueBtn: "Continue",
+    skipForNow: "skip for now",
+    page1Label: "Page 1 · Reflection",
+    whatToReflect: "what's one thing you'd like to reflect on today?",
+    reflectionPlaceholder:
+      "e.g. Today's presentation in class felt less than ideal...",
+    writeFreely: "Write freely — it can be long or short.",
+    overflowHint: "✦ Your reflection continues on the next page →",
+    nextPage: "Next page →",
+    letsBegin: "Let's begin",
+    back: "← back",
+    page2Label: "Page 2 · Continued",
+    keepGoing: "Keep going...",
+    continueWriting: "Continue writing here...",
+    doneBegin: "Done & begin",
+    hiThere: "Hey",
+    leftHint: "Take your time. There's no rush here.",
+    pageLabel: (n) => `Page ${n} · Continued`,
+  },
+  id: {
+    leftQuote: ["Setiap perjalanan", "dimulai dengan", "satu kata."],
+    reflectingToday: "Merenung hari ini",
+    takeYourTime: "Santai saja. Tidak ada yang terburu-buru.",
+    continued: "...lanjutan",
+    beforeWeBegin: "Sebelum kita mulai",
+    whatShallICallYou: "Boleh aku tahu nama kamu?",
+    yourNameStays: "Namamu hanya untuk kita berdua.",
+    namePlaceholder: "Nama kamu...",
+    continueBtn: "Lanjut",
+    skipForNow: "lewati untuk sekarang",
+    page1Label: "Halaman 1 · Refleksi",
+    whatToReflect: "apa satu hal yang ingin kamu renungkan hari ini?",
+    reflectionPlaceholder: "mis. Presentasi hari ini terasa kurang ideal...",
+    writeFreely: "Tulis bebas — bisa panjang atau pendek.",
+    overflowHint: "✦ Refleksimu berlanjut di halaman berikut →",
+    nextPage: "Halaman berikut →",
+    letsBegin: "Yuk mulai",
+    back: "← kembali",
+    page2Label: "Halaman 2 · Lanjutan",
+    keepGoing: "Lanjutkan...",
+    continueWriting: "Lanjut menulis di sini...",
+    doneBegin: "Selesai & mulai",
+    hiThere: "Hei",
+    leftHint: "Santai saja. Tidak ada yang terburu-buru.",
+    pageLabel: (n) => `Halaman ${n} · Lanjutan`,
+  },
+};
+
+const t = computed(() => i18n[props.lang] ?? i18n.en);
 const emit = defineEmits(["done"]);
 
 const visible = ref(false);
@@ -253,39 +354,133 @@ const isFlipping = ref(false);
 const currentPage = ref(1);
 
 const name = ref("");
-const reflection = ref("");
-const reflectionOverflow = ref("");
-const isOverflowing = ref(false);
+
+const pages = ref([""]);
+const pageOverflowing = ref([false]);
 
 const nameInputRef = ref(null);
 const reflectionRef = ref(null);
-const overflowRef = ref(null);
+const activeLeftRef = ref(null);
+const activeRightRef = ref(null);
 
-const OVERFLOW_CHARS = 300;
 const MAX_TEXTAREA_H = 180;
 
-// Resize textarea whenever reflection changes (including on restore)
-watch(reflection, () => {
-  nextTick(() => {
-    const el = reflectionRef.value;
-    if (!el) return;
-    el.value = reflection.value;
-    el.style.height = "auto";
-    const natural = el.scrollHeight;
-    el.style.height = Math.min(natural, MAX_TEXTAREA_H) + "px";
-    isOverflowing.value = natural > MAX_TEXTAREA_H;
-    el.scrollTop = 0;
-  });
-});
+function getMaxTextareaH(el) {
+  try {
+    const content = el.closest(".nm-content");
+    const page = el.closest(".nm-page");
+    if (!content || !page) return MAX_TEXTAREA_H;
+    const pageH = page.clientHeight;
+    const pagePadT = parseInt(getComputedStyle(page).paddingTop) || 0;
+    const pagePadB = parseInt(getComputedStyle(page).paddingBottom) || 0;
+    const available = pageH - pagePadT - pagePadB;
+    const wrap = el.closest(".nm-textarea-wrap");
+    let siblingsH = 0;
+    for (const child of content.children) {
+      if (child === wrap) continue;
+      siblingsH +=
+        child.offsetHeight +
+        parseInt(getComputedStyle(child).marginTop || 0) +
+        parseInt(getComputedStyle(child).marginBottom || 0);
+    }
+    const gap = parseInt(getComputedStyle(content).gap) || 2;
+    const siblingCount = content.children.length - 1;
+    siblingsH += gap * siblingCount;
+    const maxH = Math.max(60, available - siblingsH - 8);
+    return maxH;
+  } catch {
+    return MAX_TEXTAREA_H;
+  }
+}
+const ALLOWED_KEYS = [
+  "Backspace",
+  "Delete",
+  "ArrowLeft",
+  "ArrowRight",
+  "ArrowUp",
+  "ArrowDown",
+  "Home",
+  "End",
+  "Tab",
+];
 
-const resolvedName = computed(() => name.value.trim() || "Hi there");
-const resolvedGreeting = computed(() =>
-  name.value.trim() ? name.value.trim() : "Hi there",
+const leftPageIndex = computed(() => (currentPage.value - 3) * 2 + 1);
+const rightPageIndex = computed(() => (currentPage.value - 3) * 2 + 2);
+const leftPageNumber = computed(() => (currentPage.value - 3) * 2 + 2);
+const rightPageNumber = computed(() => (currentPage.value - 3) * 2 + 3);
+
+const leftOverflowing = computed(
+  () => pageOverflowing.value[leftPageIndex.value] ?? false,
 );
+const rightOverflowing = computed(
+  () => pageOverflowing.value[rightPageIndex.value] ?? false,
+);
+
+const allPagesEmpty = computed(() => pages.value.every((p) => !p.trim()));
+
+const resolvedName = computed(() => name.value.trim() || t.value.hiThere);
+const resolvedGreeting = computed(() =>
+  name.value.trim() ? name.value.trim() : t.value.hiThere,
+);
+
+function setLeftRef(el) {
+  activeLeftRef.value = el;
+}
+function setRightRef(el) {
+  activeRightRef.value = el;
+}
+
+function resizeTextarea(el, idx, forcedValue) {
+  if (!el) return;
+  if (forcedValue !== undefined && el.value !== forcedValue) {
+    el.value = forcedValue;
+  }
+  el.style.height = "auto";
+  void el.offsetHeight;
+  const natural = el.scrollHeight;
+  const maxH = getMaxTextareaH(el);
+  const overflows = natural > maxH;
+
+  if (idx === 0 && overflows) {
+    const trimmed = pages.value[0].slice(0, -1);
+    pages.value[0] = trimmed;
+    el.value = trimmed;
+    el.style.height = maxH + "px";
+    el.scrollTop = 0;
+    const newOverflowing = [...pageOverflowing.value];
+    newOverflowing[0] = true;
+    pageOverflowing.value = newOverflowing;
+    handleSpreadNext(0);
+    return;
+  }
+
+  el.style.height = Math.min(natural, maxH) + "px";
+  const newOverflowing = [...pageOverflowing.value];
+  newOverflowing[idx] = overflows;
+  pageOverflowing.value = newOverflowing;
+  el.scrollTop = 0;
+}
+
+function onPageInput(idx, e) {
+  pages.value[idx] = e.target.value;
+  resizeTextarea(e.target, idx);
+}
+
+function onPageInputResize(idx, e) {
+  resizeTextarea(e.target, idx);
+}
+
+function onPageKeydown(idx, e) {
+  if (!pageOverflowing.value[idx]) return;
+  if (e.ctrlKey || e.metaKey) return;
+  if (!ALLOWED_KEYS.includes(e.key)) e.preventDefault();
+}
 
 function open() {
   visible.value = true;
   currentPage.value = 1;
+  pages.value = [""];
+  pageOverflowing.value = [false];
   setTimeout(() => {
     bookOpen.value = true;
     setTimeout(() => nameInputRef.value?.focus(), 700);
@@ -302,139 +497,80 @@ function flipPage(to, afterFlip) {
 }
 
 function goToPage2() {
-  flipPage(2, () =>
-    nextTick(() => {
-      const el = reflectionRef.value;
-      if (!el) return;
-      el.focus();
-      // Lock scrollTop permanently via native listener
-      el.addEventListener(
-        "scroll",
-        () => {
-          el.scrollTop = 0;
-        },
-        { passive: true },
-      );
-      // Resize to current content
-      el.style.height = "auto";
-      el.style.height = Math.min(el.scrollHeight, MAX_TEXTAREA_H) + "px";
-    }),
-  );
+  flipPage(2, () => restoreTextarea(() => reflectionRef.value, 0, 80));
 }
+
 function goBackToPage1() {
   flipPage(1, () => nextTick(() => nameInputRef.value?.focus()));
 }
-function goBackToPage2() {
-  // Restore full text first
-  const full = reflectionOverflow.value
-    ? reflection.value + " " + reflectionOverflow.value
-    : reflection.value;
-  reflection.value = full;
-  reflectionOverflow.value = "";
-  isOverflowing.value = false;
 
-  flipPage(2, () => {
-    setTimeout(() => {
-      const el = reflectionRef.value;
-      if (!el) return;
-      el.value = reflection.value;
-      el.style.height = "auto";
-      const natural = el.scrollHeight;
-      el.style.height = Math.min(natural, MAX_TEXTAREA_H) + "px";
-      isOverflowing.value = natural > MAX_TEXTAREA_H;
-      el.scrollTop = 0;
-      el.focus();
-    }, 200);
+function handleSpreadNext(idx) {
+  while (pages.value.length <= idx + 2) {
+    pages.value.push("");
+    pageOverflowing.value.push(false);
+  }
+
+  const nextSpread = idx === 0 ? 3 : currentPage.value + 1;
+
+  flipPage(nextSpread, () => {
+    const leftIdx = (nextSpread - 3) * 2 + 1;
+    const rightIdx = (nextSpread - 3) * 2 + 2;
+    restoreTextarea(() => activeLeftRef.value, leftIdx, 80, true);
+    restoreTextarea(() => activeRightRef.value, rightIdx, 80, false);
   });
 }
 
-function onTextareaInput() {
-  const el = reflectionRef.value;
-  if (!el) return;
-  el.style.height = "auto";
-  const natural = el.scrollHeight;
-  el.style.height = Math.min(natural, MAX_TEXTAREA_H) + "px";
-  isOverflowing.value = natural > MAX_TEXTAREA_H;
-  // Always keep scroll at top — no scrolling allowed
-  el.scrollTop = 0;
+function restoreTextarea(getEl, idx, delay = 0, shouldFocus = true) {
+  const delays = [delay, delay + 100, delay + 250, delay + 450];
+  let done = false;
+  delays.forEach((d) => {
+    setTimeout(() => {
+      if (done) return;
+      nextTick(() => {
+        const el = getEl();
+        if (!el) return;
+        done = true;
+
+        if (el.value !== (pages.value[idx] ?? "")) {
+          el.value = pages.value[idx] ?? "";
+        }
+        void el.offsetHeight;
+        el.style.height = "auto";
+        void el.offsetHeight;
+        const natural = el.scrollHeight;
+        const maxH = getMaxTextareaH(el);
+        el.style.height = Math.min(natural, maxH) + "px";
+        const overflows = natural > maxH;
+        const newOverflowing = [...pageOverflowing.value];
+
+        newOverflowing[idx] =
+          overflows || (idx === 0 && pageOverflowing.value[0] === true);
+        pageOverflowing.value = newOverflowing;
+        el.scrollTop = 0;
+        if (shouldFocus) el.focus();
+      });
+    }, d);
+  });
 }
 
-function onTextareaKeydown(e) {
-  // When overflowing, block any key that adds characters (except navigation/delete)
-  if (!isOverflowing.value) return;
-  const allowed = [
-    "Backspace",
-    "Delete",
-    "ArrowLeft",
-    "ArrowRight",
-    "ArrowUp",
-    "ArrowDown",
-    "Home",
-    "End",
-    "Tab",
-  ];
-  if (e.ctrlKey || e.metaKey) return; // allow copy/paste shortcuts
-  if (!allowed.includes(e.key)) {
-    e.preventDefault();
-  }
-}
+function goBackSpread() {
+  const prevPage = currentPage.value - 1;
 
-function handleReflectionContinue() {
-  if (isOverflowing.value) {
-    const el = reflectionRef.value;
-    const text = reflection.value;
-
-    // Binary search: find the longest prefix that fits in MAX_TEXTAREA_H
-    let lo = 0;
-    let hi = text.length;
-    let fitIdx = 0;
-
-    while (lo <= hi) {
-      const mid = Math.floor((lo + hi) / 2);
-      el.value = text.slice(0, mid);
-      el.style.height = "auto";
-      if (el.scrollHeight <= MAX_TEXTAREA_H) {
-        fitIdx = mid;
-        lo = mid + 1;
-      } else {
-        hi = mid - 1;
-      }
-    }
-
-    // Restore original value
-    el.value = text;
-    el.style.height = "auto";
-    el.style.height = Math.min(el.scrollHeight, MAX_TEXTAREA_H) + "px";
-
-    // Snap to word boundary — find last space AT or before fitIdx
-    const snapAt = text.lastIndexOf(" ", fitIdx);
-    // Only snap back if there's a space reasonably close
-    const idx = snapAt > 0 && fitIdx - snapAt < 30 ? snapAt : fitIdx;
-
-    reflectionOverflow.value = text.slice(idx).trimStart();
-    reflection.value = text.slice(0, idx).trimEnd();
-    isOverflowing.value = false;
-
-    flipPage(3, () =>
-      setTimeout(() => {
-        const ov = overflowRef.value;
-        if (!ov) return;
-        ov.value = reflectionOverflow.value;
-        ov.style.height = "auto";
-        ov.style.height = Math.min(ov.scrollHeight, MAX_TEXTAREA_H) + "px";
-        ov.focus();
-      }, 200),
-    );
+  if (prevPage === 2) {
+    flipPage(2, () => restoreTextarea(() => reflectionRef.value, 0, 80));
   } else {
-    handleDone();
+    const targetLeftIdx = (prevPage - 3) * 2 + 1;
+    const targetRightIdx = (prevPage - 3) * 2 + 2;
+    flipPage(prevPage, () => {
+      restoreTextarea(() => activeLeftRef.value, targetLeftIdx, 80, false);
+      restoreTextarea(() => activeRightRef.value, targetRightIdx, 80, true);
+    });
   }
 }
 
 function handleDone() {
-  const full = reflectionOverflow.value
-    ? reflection.value + " " + reflectionOverflow.value
-    : reflection.value;
-  emit("done", name.value.trim(), full.trim());
+  const full = pages.value.join(" ").replace(/\s+/g, " ").trim();
+  emit("done", name.value.trim(), full);
   close();
 }
 
@@ -452,9 +588,8 @@ function close() {
     visible.value = false;
     currentPage.value = 1;
     name.value = "";
-    reflection.value = "";
-    reflectionOverflow.value = "";
-    isOverflowing.value = false;
+    pages.value = [""];
+    pageOverflowing.value = [false];
   }, 500);
 }
 
@@ -694,37 +829,43 @@ defineExpose({ open });
   position: relative;
   z-index: 2;
   height: 100%;
-  padding-top: 4px;
+  padding-top: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 .nm-overflow-label {
   font-family: "IM Fell English", Georgia, serif;
   font-style: italic;
   font-size: 0.7rem;
   color: rgba(100, 80, 140, 0.32);
-  margin: 0 0 10px;
+  margin: 0 0 0;
+  padding-bottom: 10px;
   text-align: center;
   flex-shrink: 0;
+  line-height: 23px;
 }
 .nm-overflow-page ~ .nm-page-lines .nm-line,
 .nm-overflow-page + .nm-page-lines .nm-line {
   opacity: 0.4;
 }
 
-/* Hide lines behind overflow text area */
 .nm-overflow-text {
   font-family: "Playfair Display", Georgia, serif;
   font-style: italic;
   font-size: 0.78rem;
-  line-height: 1.78;
-  color: rgba(60, 44, 100, 0.65);
+  line-height: 23px;
+  color: rgba(60, 44, 100, 0.88);
   word-break: break-word;
   flex: 1;
   overflow: hidden;
+  position: relative;
+  padding-top: 2px;
+  mask-image: linear-gradient(to bottom, black 55%, transparent 92%);
+  -webkit-mask-image: linear-gradient(to bottom, black 55%, transparent 92%);
 }
 .nm-book.is-dark .nm-overflow-text {
-  color: rgba(167, 139, 250, 0.62);
+  color: rgba(200, 180, 255, 0.92);
 }
 
 .nm-page-number {
@@ -742,7 +883,6 @@ defineExpose({ open });
   color: rgba(167, 139, 250, 0.6);
 }
 
-/* Right content */
 .nm-content {
   position: relative;
   z-index: 2;
@@ -871,7 +1011,7 @@ defineExpose({ open });
 .nm-textarea {
   width: 100%;
   min-height: 60px;
-  max-height: 180px;
+  max-height: none;
   resize: none;
   background: transparent;
   border: none;
@@ -904,11 +1044,25 @@ defineExpose({ open });
 .nm-book.is-dark .nm-textarea::placeholder {
   color: rgba(167, 139, 250, 0.52);
 }
-.nm-textarea-line {
-  height: 1px;
-  background: rgba(100, 80, 140, 0.16);
-  border-radius: 2px;
-  margin-top: 2px;
+
+/* Overflow page textarea — no max-height cap, scrollable */
+.nm-textarea.nm-textarea-overflow {
+  max-height: none;
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* Page 1 textarea when content exceeds available height — scroll in place */
+.nm-textarea.nm-textarea-scrollable {
+  overflow-y: auto;
+}
+
+/* Left page when it's a textarea page (page 3+) */
+.nm-left-textarea-page {
+  padding-top: 0;
+}
+.nm-left-textarea-page .nm-eyebrow {
+  margin-bottom: 8px;
 }
 
 .nm-char-hint {
@@ -957,6 +1111,9 @@ defineExpose({ open });
   cursor: pointer;
   transition: all 0.22s ease;
   box-shadow: 0 4px 14px rgba(74, 63, 122, 0.28);
+  min-width: 120px;
+  justify-content: center;
+  white-space: nowrap;
 }
 .nm-btn-primary:disabled {
   opacity: 0.38;
@@ -975,6 +1132,35 @@ defineExpose({ open });
 }
 .nm-book.is-dark .nm-btn-primary:not(:disabled):hover {
   box-shadow: 0 6px 20px rgba(108, 92, 231, 0.5);
+}
+
+.nm-btn-done {
+  font-family: "Outfit", sans-serif;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: rgba(100, 80, 140, 0.55);
+  background: none;
+  border: 1px solid rgba(100, 80, 140, 0.25);
+  border-radius: 50px;
+  cursor: pointer;
+  padding: 6px 14px;
+  transition: all 0.2s;
+}
+.nm-btn-done:not(:disabled):hover {
+  background: rgba(100, 80, 140, 0.08);
+  color: rgba(100, 80, 140, 0.8);
+}
+.nm-btn-done:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.nm-book.is-dark .nm-btn-done {
+  color: rgba(167, 139, 250, 0.7);
+  border-color: rgba(167, 139, 250, 0.28);
+}
+.nm-book.is-dark .nm-btn-done:not(:disabled):hover {
+  background: rgba(167, 139, 250, 0.1);
+  color: rgba(167, 139, 250, 1);
 }
 
 .nm-btn-skip,
