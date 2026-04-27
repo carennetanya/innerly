@@ -3,7 +3,7 @@
     <!-- Confetti -->
     <div class="sm-confetti-wrap" v-if="showConfetti">
       <span
-        v-for="i in 20"
+        v-for="i in 60"
         :key="i"
         class="sm-confetti"
         :style="getConfettiStyle(i)"
@@ -16,6 +16,62 @@
       <div class="sm-blob sm-blob-2"></div>
       <div class="sm-blob sm-blob-3"></div>
     </div>
+
+    <!-- PLANT REVEAL OVERLAY -->
+    <Transition name="sm-plant-overlay">
+      <div v-if="showPlantReveal" class="sm-plant-overlay">
+        <div class="sm-plant-overlay-bg"></div>
+        <div class="sm-plant-content">
+          <!-- Tagline above plant -->
+          <Transition name="sm-tagline-in" appear>
+            <p v-if="plantTaglineVisible" class="sm-plant-tagline">
+              {{ t.plantTagline }}
+            </p>
+          </Transition>
+
+          <!-- Plant illustration -->
+          <div class="sm-plant-wrap">
+            <div class="sm-plant-scene">
+              <!-- Plant image: slides up from behind the soil -->
+              <img
+                :src="`/${plantImageFile}`"
+                :alt="plantType"
+                class="sm-plant-img"
+              />
+              <!-- Soil sits on top, masking the bottom of the image -->
+              <!-- <div class="sm-soil"><div class="sm-soil-inner"></div></div> -->
+            </div>
+
+            <!-- Sparkles -->
+            <div class="sm-sparkle sm-sparkle-1">✦</div>
+            <div class="sm-sparkle sm-sparkle-2">✧</div>
+            <div class="sm-sparkle sm-sparkle-3">✦</div>
+            <div class="sm-sparkle sm-sparkle-4">✧</div>
+          </div>
+
+          <!-- Text + button below plant -->
+          <Transition name="sm-desc-in">
+            <div v-if="plantDescVisible" class="sm-plant-desc-wrap">
+              <p class="sm-plant-desc">
+                {{ t.plantDesc }}
+              </p>
+              <Transition name="sm-btn-in">
+                <button
+                  v-if="plantBtnVisible"
+                  class="sm-kebun-btn"
+                  @click="handleKebun"
+                >
+                  {{ t.plantBtn }}
+                </button>
+              </Transition>
+              <button class="sm-plant-skip" @click="closePlantReveal">
+                {{ t.plantSkip }}
+              </button>
+            </div>
+          </Transition>
+        </div>
+      </div>
+    </Transition>
 
     <Transition name="sm-pop" appear>
       <div class="sm-card">
@@ -58,18 +114,15 @@
               {{ t.aiGenBtn }}
             </button>
           </div>
-
           <div v-if="aiLoading" class="sm-ai-loading">
             <span class="sm-ai-spinner"></span>
             <span class="sm-ai-loading-text">{{ t.aiLoading }}</span>
           </div>
-
           <Transition name="sm-fade">
             <p v-if="aiSummary && !aiLoading" class="sm-ai-text">
               {{ aiSummary }}
             </p>
           </Transition>
-
           <p v-if="!aiSummary && !aiLoading" class="sm-ai-placeholder">
             {{ t.aiPlaceholder }}
           </p>
@@ -77,23 +130,18 @@
 
         <!-- Recap sections -->
         <div class="sm-recap">
-          <!-- Trigger -->
           <div class="sm-recap-item" v-if="data.trigger">
             <div class="sm-recap-label">
               <span>🌱</span> {{ t.labelTrigger }}
             </div>
             <div class="sm-recap-text">{{ data.trigger }}</div>
           </div>
-
-          <!-- Mood -->
           <div class="sm-recap-item" v-if="data.mood">
             <div class="sm-recap-label"><span>💜</span> {{ t.labelMood }}</div>
             <div class="sm-recap-text">
               {{ data.moodEmoji }} {{ data.mood }}
             </div>
           </div>
-
-          <!-- Evaluation -->
           <div class="sm-recap-two-col" v-if="data.wentWell || data.needsWork">
             <div class="sm-recap-mini" v-if="data.wentWell">
               <div class="sm-recap-label">
@@ -108,16 +156,12 @@
               <div class="sm-recap-text">{{ data.needsWork }}</div>
             </div>
           </div>
-
-          <!-- Insight -->
           <div class="sm-recap-item" v-if="data.insight">
             <div class="sm-recap-label">
               <span>💡</span> {{ t.labelInsight }}
             </div>
             <div class="sm-recap-text">{{ data.insight }}</div>
           </div>
-
-          <!-- Action Plan -->
           <div class="sm-action-box" v-if="data.action">
             <div class="sm-action-label">
               <span>🎯</span> {{ t.labelAction }}
@@ -147,8 +191,8 @@
 
         <!-- Footer actions -->
         <div class="sm-footer">
-          <button class="sm-btn-new" @click="$emit('new')">
-            ✨ {{ t.newBtn }}
+          <button class="sm-btn-new" @click="handleSelesai">
+            🌱 {{ t.selesaiBtn }}
           </button>
           <button class="sm-btn-dash" @click="$emit('done')">
             {{ t.dashBtn }}
@@ -162,7 +206,7 @@
 <script setup>
 import { ref, computed, onMounted } from "vue";
 
-const GEMINI_API_KEY = "AIzaSyA7cseaDc0-Q1u50PtYKMcaDwHfzyS5Z6g";
+const GEMINI_API_KEY = "AIzaSyBLut0UkrsMQe-dKbkTVh8QIUoDWDJTqig";
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
 const props = defineProps({
@@ -183,7 +227,7 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(["done", "new"]);
+const emit = defineEmits(["done", "new", "show-auth"]);
 
 const i18n = {
   en: {
@@ -204,19 +248,16 @@ const i18n = {
     committedTag: "You are committed!",
     saveBtn: "Save as tomorrow's reminder",
     savedToast: "🔔 Reminder saved! Check tomorrow.",
-    newBtn: "Start a new reflection",
+    selesaiBtn: "Done & Save",
     dashBtn: "← Back to Dashboard",
+    plantTagline: "One step toward a better you.",
+    plantDesc:
+      "Today's reflection has been planted. Don't let this progress fade. Create an Innerly account to watch your garden bloom over time.",
+    plantBtn: "🌿 Save to My Garden",
+    plantSkip: "Skip",
     aiSystemPrompt: `You are a warm and wise journaling companion. The user has just completed a Gibbs' Reflective Cycle session. Write a SHORT, personal, encouraging summary (3-5 sentences max) of their reflection. Speak directly to them ("you"), highlight their self-awareness, and end with a gentle encouragement. Do NOT use bullet points or markdown. Use warm, human English.`,
-    aiUserPrompt: (d) => `Here is what the user reflected on today:
-
-${d.trigger ? `What happened: ${d.trigger}` : ""}
-${d.mood ? `How they felt: ${d.moodEmoji} ${d.mood}` : ""}
-${d.wentWell ? `What went well: ${d.wentWell}` : ""}
-${d.needsWork ? `What could improve: ${d.needsWork}` : ""}
-${d.insight ? `Their insight: ${d.insight}` : ""}
-${d.action ? `Their commitment for tomorrow: ${d.action}` : ""}
-
-Please write a warm, personal summary for them.`,
+    aiUserPrompt: (d) =>
+      `Here is what the user reflected on today:\n\n${d.trigger ? `What happened: ${d.trigger}` : ""}\n${d.mood ? `How they felt: ${d.moodEmoji} ${d.mood}` : ""}\n${d.wentWell ? `What went well: ${d.wentWell}` : ""}\n${d.needsWork ? `What could improve: ${d.needsWork}` : ""}\n${d.insight ? `Their insight: ${d.insight}` : ""}\n${d.action ? `Their commitment for tomorrow: ${d.action}` : ""}\n\nPlease write a warm, personal summary for them.`,
   },
   id: {
     title: "Refleksi Selesai!",
@@ -236,19 +277,16 @@ Please write a warm, personal summary for them.`,
     committedTag: "Kamu sudah berkomitmen!",
     saveBtn: "Simpan sebagai pengingat besok",
     savedToast: "🔔 Pengingat disimpan! Cek besok ya.",
-    newBtn: "Mulai refleksi baru",
+    selesaiBtn: "Selesai dan Simpan",
     dashBtn: "← Kembali ke Dashboard",
+    plantTagline: "Satu langkah untuk kemajuan dirimu.",
+    plantDesc:
+      "Refleksimu hari ini sudah berhasil ditanam. Jangan biarkan progres ini hilang. Buat akun Innerly agar kamu bisa melihat kebunmu mekar dari waktu ke waktu.",
+    plantBtn: "🌿 Simpan ke Kebunku",
+    plantSkip: "Lewati",
     aiSystemPrompt: `Kamu adalah teman jurnal yang hangat dan bijaksana. Pengguna baru saja menyelesaikan sesi Siklus Reflektif Gibbs. Tulis RINGKASAN SINGKAT yang personal dan menyemangati (maksimal 3-5 kalimat) dari refleksi mereka. Bicara langsung kepada mereka ("kamu"), soroti kesadaran diri mereka, dan akhiri dengan dorongan semangat yang lembut. JANGAN gunakan bullet point atau markdown. Gunakan bahasa Indonesia yang hangat dan manusiawi.`,
-    aiUserPrompt: (d) => `Ini adalah apa yang direfleksikan pengguna hari ini:
-
-${d.trigger ? `Apa yang terjadi: ${d.trigger}` : ""}
-${d.mood ? `Perasaan mereka: ${d.moodEmoji} ${d.mood}` : ""}
-${d.wentWell ? `Yang berjalan baik: ${d.wentWell}` : ""}
-${d.needsWork ? `Yang perlu diperbaiki: ${d.needsWork}` : ""}
-${d.insight ? `Insight mereka: ${d.insight}` : ""}
-${d.action ? `Komitmen mereka untuk besok: ${d.action}` : ""}
-
-Tolong tulis ringkasan yang hangat dan personal untuk mereka.`,
+    aiUserPrompt: (d) =>
+      `Ini adalah apa yang direfleksikan pengguna hari ini:\n\n${d.trigger ? `Apa yang terjadi: ${d.trigger}` : ""}\n${d.mood ? `Perasaan mereka: ${d.moodEmoji} ${d.mood}` : ""}\n${d.wentWell ? `Yang berjalan baik: ${d.wentWell}` : ""}\n${d.needsWork ? `Yang perlu diperbaiki: ${d.needsWork}` : ""}\n${d.insight ? `Insight mereka: ${d.insight}` : ""}\n${d.action ? `Komitmen mereka untuk besok: ${d.action}` : ""}\n\nTolong tulis ringkasan yang hangat dan personal untuk mereka.`,
   },
 };
 
@@ -258,6 +296,39 @@ const aiSummary = ref("");
 const aiLoading = ref(false);
 const savedToast = ref(false);
 const showConfetti = ref(true);
+
+// Plant reveal state
+const showPlantReveal = ref(false);
+const plantTaglineVisible = ref(false);
+const plantDescVisible = ref(false);
+const plantBtnVisible = ref(false);
+
+// Mood → plant type mapping
+const moodImageMap = {
+  Senang: "happy",
+  Tenang: "calm",
+  Bersemangat: "excited",
+  Sedih: "sad",
+  Cemas: "anxious",
+  Frustrasi: "frustrated",
+  Bingung: "confused",
+  Lelah: "tired",
+  Terharu: "touched",
+  "Biasa aja": "so-so",
+  Happy: "happy",
+  Calm: "calm",
+  Excited: "excited",
+  Sad: "sad",
+  Anxious: "anxious",
+  Frustrated: "frustrated",
+  Confused: "confused",
+  Tired: "tired",
+  Touched: "touched",
+  "So-so": "so-so",
+};
+
+const plantType = computed(() => moodImageMap[props.data?.mood] || "happy");
+const plantImageFile = computed(() => `${plantType.value}1.png`);
 
 onMounted(() => {
   generateSummary();
@@ -272,19 +343,11 @@ async function generateSummary() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        system_instruction: {
-          parts: [{ text: t.value.aiSystemPrompt }],
-        },
+        system_instruction: { parts: [{ text: t.value.aiSystemPrompt }] },
         contents: [
-          {
-            role: "user",
-            parts: [{ text: t.value.aiUserPrompt(props.data) }],
-          },
+          { role: "user", parts: [{ text: t.value.aiUserPrompt(props.data) }] },
         ],
-        generationConfig: {
-          maxOutputTokens: 300,
-          temperature: 0.85,
-        },
+        generationConfig: { maxOutputTokens: 1024, temperature: 0.85 },
       }),
     });
     const json = await res.json();
@@ -300,6 +363,30 @@ async function generateSummary() {
 function handleSave() {
   savedToast.value = true;
   setTimeout(() => (savedToast.value = false), 3500);
+}
+
+function handleSelesai() {
+  showPlantReveal.value = true;
+  setTimeout(() => {
+    plantTaglineVisible.value = true;
+  }, 400);
+  setTimeout(() => {
+    plantDescVisible.value = true;
+  }, 1800);
+  setTimeout(() => {
+    plantBtnVisible.value = true;
+  }, 2600);
+}
+
+function closePlantReveal() {
+  showPlantReveal.value = false;
+  plantTaglineVisible.value = false;
+  plantDescVisible.value = false;
+  plantBtnVisible.value = false;
+}
+
+function handleKebun() {
+  emit("show-auth");
 }
 
 function getConfettiStyle(i) {
@@ -347,21 +434,6 @@ function getConfettiStyle(i) {
   background: rgba(124, 108, 168, 0.1);
   color: rgba(100, 80, 140, 0.9);
 }
-.sm-screen[data-dark="true"] .sm-fixed-back {
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  display: flex;
-  align-items: center;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 8px;
-  border-radius: 12px;
-  color: rgba(100, 80, 140, 0.65);
-  transition: all 0.2s;
-}
 .sm-screen[data-dark="true"] .sm-fixed-back:hover {
   background: rgba(167, 139, 250, 0.1);
   color: rgba(167, 139, 250, 0.9);
@@ -372,46 +444,17 @@ function getConfettiStyle(i) {
   object-fit: contain;
   filter: drop-shadow(0 2px 6px rgba(124, 108, 168, 0.25));
 }
-.sm-fixed-steps {
-  display: flex;
-  gap: 5px;
-  align-items: center;
-}
-.sm-fixed-step {
-  height: 4px;
-  width: 36px;
-  border-radius: 3px;
-  background: rgba(124, 108, 168, 0.15);
-  transition: all 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);
-}
-.sm-fixed-step.done {
-  background: rgba(124, 108, 168, 0.45);
-}
-.sm-fixed-step.done.active {
-  background: #7c6ca8;
-  width: 52px;
-  box-shadow: 0 0 8px rgba(124, 108, 168, 0.4);
-}
-.sm-screen[data-dark="true"] .sm-fixed-step {
-  background: rgba(167, 139, 250, 0.12);
-}
-.sm-screen[data-dark="true"] .sm-fixed-step.done {
-  background: rgba(167, 139, 250, 0.38);
-}
-.sm-screen[data-dark="true"] .sm-fixed-step.done.active {
-  background: #a78bfa;
-  box-shadow: 0 0 8px rgba(167, 139, 250, 0.45);
-}
 
 .sm-screen {
   position: fixed;
   inset: 0;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   padding: 20px;
   z-index: 5000;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   background: radial-gradient(
     ellipse at 50% 30%,
     #f0ebff 0%,
@@ -428,7 +471,6 @@ function getConfettiStyle(i) {
   );
 }
 
-/* Confetti */
 .sm-confetti-wrap {
   position: fixed;
   inset: 0;
@@ -454,7 +496,6 @@ function getConfettiStyle(i) {
   }
 }
 
-/* Ambient blobs */
 .sm-ambient {
   position: absolute;
   inset: 0;
@@ -513,7 +554,6 @@ function getConfettiStyle(i) {
   }
 }
 
-/* In-card topbar */
 .sm-card-topbar {
   position: relative;
   display: flex;
@@ -521,17 +561,7 @@ function getConfettiStyle(i) {
   justify-content: center;
   margin-bottom: -8px;
 }
-.sm-steps-bottom {
-  justify-content: center;
-  padding-top: 8px;
-  border-top: 1px solid rgba(124, 108, 168, 0.1);
-  margin-top: -4px;
-}
-.sm-screen[data-dark="true"] .sm-steps-bottom {
-  border-top-color: rgba(167, 139, 250, 0.1);
-}
 
-/* Card */
 .sm-card {
   position: relative;
   z-index: 2;
@@ -549,12 +579,8 @@ function getConfettiStyle(i) {
   box-shadow:
     0 28px 72px rgba(80, 60, 140, 0.18),
     0 2px 10px rgba(80, 60, 140, 0.08);
-  max-height: 92svh;
-  overflow-y: auto;
-  scrollbar-width: none;
-}
-.sm-card::-webkit-scrollbar {
-  display: none;
+  box-sizing: border-box;
+  margin: auto;
 }
 .sm-screen[data-dark="true"] .sm-card {
   background: rgba(14, 10, 30, 0.92);
@@ -564,27 +590,12 @@ function getConfettiStyle(i) {
     0 2px 10px rgba(0, 0, 0, 0.3);
 }
 
-/* Hero */
 .sm-hero {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 6px;
   text-align: center;
-}
-.sm-hero-icon {
-  font-size: 2.2rem;
-  animation: smStarPop 0.6s cubic-bezier(0.34, 1.5, 0.64, 1) forwards;
-}
-@keyframes smStarPop {
-  from {
-    transform: scale(0) rotate(-30deg);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1) rotate(0deg);
-    opacity: 1;
-  }
 }
 .sm-title {
   font-family: "Playfair Display", Georgia, serif;
@@ -607,7 +618,6 @@ function getConfettiStyle(i) {
   color: rgba(190, 165, 255, 0.65);
 }
 
-/* AI Summary Box */
 .sm-ai-box {
   background: linear-gradient(
     135deg,
@@ -620,13 +630,11 @@ function getConfettiStyle(i) {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  min-height: 72px;
 }
 .sm-screen[data-dark="true"] .sm-ai-box {
   background: rgba(167, 139, 250, 0.07);
   border-color: rgba(167, 139, 250, 0.2);
 }
-
 .sm-ai-box-header {
   display: flex;
   align-items: center;
@@ -643,7 +651,6 @@ function getConfettiStyle(i) {
 .sm-screen[data-dark="true"] .sm-ai-box-label {
   color: rgba(190, 165, 255, 0.7);
 }
-
 .sm-ai-gen-btn {
   font-family: "Outfit", sans-serif;
   font-size: 0.76rem;
@@ -661,7 +668,6 @@ function getConfettiStyle(i) {
   border-color: rgba(124, 108, 168, 0.4);
   transform: translateY(-1px);
 }
-
 .sm-ai-loading {
   display: flex;
   align-items: center;
@@ -690,18 +696,18 @@ function getConfettiStyle(i) {
 .sm-screen[data-dark="true"] .sm-ai-loading-text {
   color: rgba(190, 165, 255, 0.6);
 }
-
 .sm-ai-text {
   font-family: "Outfit", sans-serif;
   font-size: 0.88rem;
   line-height: 1.75;
   color: #2d1f6e;
   margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 .sm-screen[data-dark="true"] .sm-ai-text {
   color: rgba(220, 205, 255, 0.9);
 }
-
 .sm-ai-placeholder {
   font-family: "Outfit", sans-serif;
   font-size: 0.8rem;
@@ -713,7 +719,6 @@ function getConfettiStyle(i) {
   color: rgba(167, 139, 250, 0.35);
 }
 
-/* Recap */
 .sm-recap {
   display: flex;
   flex-direction: column;
@@ -774,7 +779,6 @@ function getConfettiStyle(i) {
   color: rgba(220, 205, 255, 0.85);
 }
 
-/* Action box */
 .sm-action-box {
   background: linear-gradient(
     135deg,
@@ -822,7 +826,6 @@ function getConfettiStyle(i) {
   color: #8cd464;
 }
 
-/* Save button */
 .sm-save-btn {
   width: 100%;
   padding: 12px 24px;
@@ -847,7 +850,6 @@ function getConfettiStyle(i) {
   color: #a78bfa;
 }
 
-/* Toast */
 .sm-toast {
   text-align: center;
   font-family: "Outfit", sans-serif;
@@ -860,7 +862,6 @@ function getConfettiStyle(i) {
   padding: 10px 16px;
 }
 
-/* Footer */
 .sm-footer {
   display: flex;
   flex-direction: column;
@@ -889,7 +890,6 @@ function getConfettiStyle(i) {
 .sm-screen[data-dark="true"] .sm-btn-new {
   background: linear-gradient(135deg, #6c5ce7 0%, #a78bfa 100%);
 }
-
 .sm-btn-dash {
   width: 100%;
   padding: 11px 28px;
@@ -913,7 +913,6 @@ function getConfettiStyle(i) {
   color: rgba(190, 165, 255, 0.55);
 }
 
-/* Transitions */
 .sm-pop-enter-active {
   transition:
     opacity 0.5s ease,
@@ -923,7 +922,6 @@ function getConfettiStyle(i) {
   opacity: 0;
   transform: scale(0.9) translateY(24px);
 }
-
 .sm-fade-enter-active {
   transition:
     opacity 0.35s ease,
@@ -938,5 +936,245 @@ function getConfettiStyle(i) {
 }
 .sm-fade-leave-to {
   opacity: 0;
+}
+
+/* ── PLANT REVEAL OVERLAY ── */
+.sm-plant-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.sm-plant-overlay-bg {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at 50% 60%,
+    #f5f0ff 0%,
+    #e8dcff 40%,
+    #d4c4f8 100%
+  );
+  backdrop-filter: blur(12px);
+}
+.sm-screen[data-dark="true"] .sm-plant-overlay-bg {
+  background: radial-gradient(
+    ellipse at 50% 60%,
+    #0e0820 0%,
+    #07041a 60%,
+    #030210 100%
+  );
+}
+.sm-plant-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 400px;
+  width: 100%;
+  text-align: center;
+}
+.sm-plant-tagline {
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: clamp(1.1rem, 3.5vw, 1.4rem);
+  font-weight: 700;
+  color: #2d1f6e;
+  margin: 0 0 16px 0;
+  line-height: 1.4;
+}
+.sm-screen[data-dark="true"] .sm-plant-tagline {
+  color: #e8d8ff;
+}
+
+.sm-plant-wrap {
+  position: relative;
+  width: 240px;
+  height: 260px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  margin: 0 auto;
+  overflow: hidden; /* clip the image as it rises */
+}
+.sm-plant-scene {
+  position: relative;
+  width: 200px;
+  height: 240px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  overflow: hidden;
+}
+
+/* Plant image: grows up from behind the soil */
+.sm-plant-img {
+  position: absolute;
+  bottom: 22px; /* overlaps soil so stem connects */
+  left: 50%;
+  transform: translateX(-50%) translateY(100%);
+  width: 180px;
+  height: auto;
+  object-fit: contain;
+  z-index: 2;
+  animation: smPlantRise 0.9s 0.2s cubic-bezier(0.34, 1.28, 0.64, 1) forwards;
+}
+@keyframes smPlantRise {
+  from {
+    transform: translateX(-50%) translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(-50%) translateY(0%);
+    opacity: 1;
+  }
+}
+
+/* Sparkles */
+.sm-sparkle {
+  position: absolute;
+  font-size: 18px;
+  color: #c4b5fd;
+  animation: smSparkle 1.8s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+.sm-sparkle-1 {
+  top: 8px;
+  left: 8px;
+  animation-delay: 0s;
+}
+.sm-sparkle-2 {
+  top: 20px;
+  right: 4px;
+  animation-delay: 0.4s;
+  font-size: 13px;
+}
+.sm-sparkle-3 {
+  bottom: 30px;
+  left: 4px;
+  animation-delay: 0.8s;
+  font-size: 14px;
+}
+.sm-sparkle-4 {
+  bottom: 50px;
+  right: 8px;
+  animation-delay: 1.2s;
+  font-size: 10px;
+}
+@keyframes smSparkle {
+  from {
+    opacity: 0.3;
+    transform: scale(0.8) rotate(-15deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1.2) rotate(15deg);
+  }
+}
+
+.sm-plant-desc-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin-top: 20px;
+  padding: 0 8px;
+}
+.sm-plant-desc {
+  font-family: "Outfit", sans-serif;
+  font-size: 0.9rem;
+  line-height: 1.7;
+  color: #3d2a7a;
+  margin: 0;
+  text-align: center;
+  max-width: 340px;
+}
+.sm-screen[data-dark="true"] .sm-plant-desc {
+  color: rgba(210, 190, 255, 0.85);
+}
+
+.sm-kebun-btn {
+  padding: 14px 36px;
+  border-radius: 50px;
+  background: linear-gradient(135deg, #5b4a9a 0%, #9333ea 100%);
+  color: white;
+  border: none;
+  font-family: "Outfit", sans-serif;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 8px 28px rgba(147, 51, 234, 0.38);
+}
+.sm-kebun-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 36px rgba(147, 51, 234, 0.5);
+  filter: brightness(1.08);
+}
+.sm-kebun-btn:active {
+  transform: translateY(-1px);
+}
+
+.sm-plant-skip {
+  background: none;
+  border: none;
+  font-family: "Outfit", sans-serif;
+  font-size: 0.78rem;
+  color: rgba(100, 80, 160, 0.45);
+  cursor: pointer;
+  padding: 4px 8px;
+  transition: color 0.2s;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.sm-plant-skip:hover {
+  color: rgba(100, 80, 160, 0.7);
+}
+.sm-screen[data-dark="true"] .sm-plant-skip {
+  color: rgba(180, 160, 255, 0.35);
+}
+
+.sm-plant-overlay-enter-active {
+  transition: opacity 0.5s ease;
+}
+.sm-plant-overlay-leave-active {
+  transition: opacity 0.35s ease;
+}
+.sm-plant-overlay-enter-from,
+.sm-plant-overlay-leave-to {
+  opacity: 0;
+}
+
+.sm-tagline-in-enter-active {
+  transition:
+    opacity 0.6s ease,
+    transform 0.6s cubic-bezier(0.34, 1.2, 0.64, 1);
+}
+.sm-tagline-in-enter-from {
+  opacity: 0;
+  transform: translateY(12px);
+}
+
+.sm-desc-in-enter-active {
+  transition:
+    opacity 0.7s ease,
+    transform 0.7s ease;
+}
+.sm-desc-in-enter-from {
+  opacity: 0;
+  transform: translateY(16px);
+}
+
+.sm-btn-in-enter-active {
+  transition:
+    opacity 0.5s ease,
+    transform 0.5s cubic-bezier(0.34, 1.5, 0.64, 1);
+}
+.sm-btn-in-enter-from {
+  opacity: 0;
+  transform: scale(0.8);
 }
 </style>

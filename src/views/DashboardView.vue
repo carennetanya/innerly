@@ -1,61 +1,10 @@
 <template>
   <div class="app-shell">
-    <!-- Sidebar -->
-    <aside class="sidebar" :class="{ collapsed: sidebarCollapsed }">
-      <div class="sidebar-header">
-        <img src="/logo.png" alt="Innerly" class="sidebar-logo" />
-        <span class="sidebar-brand" v-if="!sidebarCollapsed">Innerly</span>
-        <button
-          class="collapse-btn"
-          @click="sidebarCollapsed = !sidebarCollapsed"
-        >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <path v-if="!sidebarCollapsed" d="M15 18l-6-6 6-6" />
-            <path v-else d="M9 18l6-6-6-6" />
-          </svg>
-        </button>
-      </div>
-
-      <nav class="sidebar-nav">
-        <button
-          v-for="item in navItems"
-          :key="item.id"
-          class="nav-item"
-          :class="{ active: activeView === item.id }"
-          @click="activeView = item.id"
-        >
-          <span class="nav-icon" v-html="item.icon"></span>
-          <span class="nav-label" v-if="!sidebarCollapsed">{{
-            item.label
-          }}</span>
-          <span class="nav-badge" v-if="item.badge && !sidebarCollapsed">{{
-            item.badge
-          }}</span>
-        </button>
-      </nav>
-
-      <div class="sidebar-footer" v-if="!sidebarCollapsed">
-        <div class="streak-card">
-          <span class="streak-fire">🔥</span>
-          <div>
-            <div class="streak-num">{{ streakDays }}</div>
-            <div class="streak-label">{{ t.streak }}</div>
-          </div>
-        </div>
-      </div>
-    </aside>
 
     <!-- Main area -->
     <main class="main">
       <!-- Topbar -->
-      <header class="topbar">
+      <header class="topbar" v-show="activeView !== 'kebun'">
         <div class="topbar-left">
           <h1 class="page-title">{{ currentNavItem?.label }}</h1>
           <span class="date-chip">{{ todayStr }}</span>
@@ -103,8 +52,20 @@
         </div>
       </header>
 
+      <!-- Kebun Innerly -->
+      <div class="content kebun-view" v-if="activeView === 'kebun'">
+        <GardenView
+          :is-dark="isDark"
+          :lang="props.lang"
+          :reflections="reflections"
+          :streak-days="streakDays"
+          :user-name="props.userName"
+          @start-journal="activeView = 'journal'"
+        />
+      </div>
+
       <!-- Dashboard content -->
-      <div class="content" v-if="activeView === 'dashboard'">
+      <div class="content" v-else-if="activeView === 'dashboard'">
         <!-- Welcome banner -->
         <div class="welcome-banner">
           <div class="welcome-text">
@@ -239,12 +200,28 @@
         </button>
       </div>
     </main>
+
+    <!-- Bottom Navigation Bar -->
+    <nav class="bottom-nav">
+      <button
+        v-for="item in mainNavItems"
+        :key="item.id"
+        class="bottom-nav-item"
+        :class="{ active: activeView === item.id }"
+        @click="activeView = item.id"
+      >
+        <span class="bottom-nav-icon" v-html="item.icon"></span>
+        <span class="bottom-nav-label">{{ item.label }}</span>
+        <span class="bottom-nav-badge" v-if="item.badge">{{ item.badge }}</span>
+      </button>
+    </nav>
   </div>
 </template>
 
 <script setup>
 import { ref, computed } from "vue";
 import GuidedJournal from "../components/GuidedJournal.vue";
+import GardenView from "../components/GardenView.vue";
 
 const props = defineProps({
   isDark: Boolean,
@@ -372,12 +349,19 @@ const i18n = {
 const t = computed(() => i18n[props.lang] ?? i18n.en);
 const emit = defineEmits(["toggleTheme"]);
 
-const sidebarCollapsed = ref(false);
-const activeView = ref("dashboard");
+const activeView = ref("kebun");
 const selectedMood = ref(props.initialMood?.mood ?? null);
 const streakDays = ref(4);
 
+// Reflections storage: array of {date, mood, trigger, wentWell, improve, insight, action}
+const reflections = ref(JSON.parse(localStorage.getItem('innerly_reflections') || '[]'));
+
 const navItems = [
+  {
+    id: "kebun",
+    label: props.lang === 'id' ? 'Kebun Innerly' : 'Innerly Garden',
+    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22V12M12 12C12 12 8 9 8 5a4 4 0 0 1 8 0c0 4-4 7-4 7z"/><path d="M5 22h14"/></svg>`,
+  },
   {
     id: "dashboard",
     label: t.value.nav.dashboard,
@@ -446,6 +430,15 @@ const currentNavItem = computed(() =>
   navItems.find((n) => n.id === activeView.value),
 );
 
+// Main nav items for bottom bar (only the key ones)
+const mainNavItems = computed(() => [
+  navItems.find(n => n.id === 'kebun'),
+  navItems.find(n => n.id === 'dashboard'),
+  navItems.find(n => n.id === 'journal'),
+  navItems.find(n => n.id === 'mood'),
+  navItems.find(n => n.id === 'insights'),
+].filter(Boolean));
+
 const todayStr = computed(() => {
   return new Date().toLocaleDateString(
     props.lang === "id" ? "id-ID" : "en-US",
@@ -460,9 +453,23 @@ const todayStr = computed(() => {
 const greeting = computed(() => t.value.greeting(props.userName));
 const displayName = computed(() => t.value.displayName(props.userName));
 
-function onJournalDone() {
+function onJournalDone(data) {
   streakDays.value = streakDays.value + 1;
-  activeView.value = "dashboard";
+  // Save reflection with today's date
+  const today = new Date();
+  const dateKey = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+  const newRef = {
+    date: dateKey,
+    mood: data?.moods?.[0] ?? data?.mood ?? '',
+    trigger: data?.trigger ?? '',
+    wentWell: data?.wentWell ?? '',
+    improve: data?.improve ?? '',
+    insight: data?.insight ?? '',
+    action: data?.action ?? '',
+  };
+  reflections.value = [...reflections.value, newRef];
+  localStorage.setItem('innerly_reflections', JSON.stringify(reflections.value));
+  activeView.value = "kebun";
 }
 </script>
 
@@ -470,184 +477,12 @@ function onJournalDone() {
 /* ── Layout ── */
 .app-shell {
   display: flex;
+  flex-direction: column;
   min-height: 100svh;
   background: var(--bg-base);
   transition: background 0.4s ease;
 }
 
-/* ── Sidebar ── */
-.sidebar {
-  width: 240px;
-  min-height: 100svh;
-  background: var(--bg-sidebar);
-  border-right: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  position: sticky;
-  top: 0;
-  height: 100svh;
-  overflow: visible;
-}
-.sidebar.collapsed {
-  width: 68px;
-}
-
-.sidebar-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 4px 12px 0px;
-  border-bottom: none;
-  position: relative;
-}
-.sidebar.collapsed .sidebar-header {
-  justify-content: center;
-  padding: 4px 8px 0px;
-}
-.sidebar-logo {
-  width: 44px;
-  height: 44px;
-  object-fit: contain;
-  flex-shrink: 0;
-  transition:
-    width 0.3s ease,
-    height 0.3s ease;
-  transform: scale(2.2) translateY(4px);
-  transform-origin: center center;
-}
-.sidebar.collapsed .sidebar-logo {
-  width: 44px;
-  height: 44px;
-  transform: scale(2.2) translateY(4px);
-}
-.sidebar-brand {
-  font-family: var(--font-heading);
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  white-space: nowrap;
-}
-.collapse-btn {
-  margin-left: auto;
-  color: var(--text-secondary);
-  padding: 5px;
-  border-radius: 50%;
-  width: 26px;
-  height: 26px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1.5px solid var(--border);
-  background: var(--bg-card);
-  transition:
-    color 0.2s,
-    background 0.2s,
-    border-color 0.2s,
-    box-shadow 0.2s;
-  flex-shrink: 0;
-  position: absolute;
-  right: -13px;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 10;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-.sidebar.collapsed .collapse-btn {
-  right: -13px;
-  top: 50%;
-  transform: translateY(-50%);
-}
-.collapse-btn:hover {
-  color: var(--accent);
-  background: var(--accent-soft);
-  border-color: var(--accent);
-  box-shadow: 0 2px 12px var(--accent-glow);
-}
-
-.sidebar-nav {
-  flex: 1;
-  padding: 4px 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  overflow-y: auto;
-}
-
-.nav-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 10px;
-  border-radius: 10px;
-  color: var(--text-secondary);
-  font-size: 0.88rem;
-  font-weight: 500;
-  transition: all 0.2s ease;
-  white-space: nowrap;
-  position: relative;
-}
-.nav-item:hover {
-  background: var(--accent-soft);
-  color: var(--accent);
-}
-.nav-item.active {
-  background: var(--accent-soft);
-  color: var(--accent);
-  font-weight: 600;
-}
-.nav-item.active::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 20%;
-  bottom: 20%;
-  width: 3px;
-  background: var(--accent);
-  border-radius: 0 3px 3px 0;
-}
-.nav-icon {
-  flex-shrink: 0;
-  display: flex;
-}
-.nav-label {
-  flex: 1;
-}
-.nav-badge {
-  font-size: 0.65rem;
-  font-weight: 700;
-  background: var(--accent);
-  color: white;
-  padding: 1px 6px;
-  border-radius: 20px;
-}
-
-.sidebar-footer {
-  padding: 12px 10px 20px;
-}
-.streak-card {
-  background: var(--accent-soft);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 12px 14px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.streak-fire {
-  font-size: 1.4rem;
-}
-.streak-num {
-  font-weight: 700;
-  font-size: 1.1rem;
-  color: var(--accent);
-  line-height: 1;
-}
-.streak-label {
-  font-size: 0.7rem;
-  color: var(--text-muted);
-  margin-top: 1px;
-}
 
 /* ── Main ── */
 .main {
@@ -728,6 +563,11 @@ function onJournalDone() {
   flex-direction: column;
   gap: 22px;
   overflow-y: auto;
+}
+.kebun-view {
+  padding: 0 !important;
+  gap: 0 !important;
+  overflow: hidden !important;
 }
 
 /* ── Welcome banner ── */
@@ -971,4 +811,84 @@ function onJournalDone() {
   align-items: stretch;
   padding: 28px 28px 40px;
 }
+
+/* ── Bottom Navigation Bar ── */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 8px 4px calc(8px + env(safe-area-inset-bottom));
+  backdrop-filter: blur(12px);
+  box-shadow: 0 -4px 24px rgba(0,0,0,0.06);
+}
+
+.bottom-nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 6px 4px;
+  border-radius: 12px;
+  color: var(--text-muted);
+  font-size: 0.65rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  position: relative;
+  max-width: 80px;
+}
+.bottom-nav-item:hover {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.bottom-nav-item.active {
+  color: var(--accent);
+  font-weight: 700;
+}
+.bottom-nav-item.active .bottom-nav-icon {
+  background: var(--accent-soft);
+  border-radius: 10px;
+  padding: 5px 10px;
+}
+.bottom-nav-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  padding: 5px 10px;
+}
+.bottom-nav-label {
+  font-size: 0.6rem;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 70px;
+}
+.bottom-nav-badge {
+  position: absolute;
+  top: 4px;
+  right: 12px;
+  font-size: 0.5rem;
+  font-weight: 700;
+  background: var(--accent);
+  color: white;
+  padding: 1px 4px;
+  border-radius: 10px;
+}
+
+/* Adjust main content to not be hidden behind bottom nav */
+.main {
+  padding-bottom: 72px;
+}
+
 </style>

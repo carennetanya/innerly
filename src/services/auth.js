@@ -1,13 +1,13 @@
 const API_URL = "/api/auth";
 
 export const authService = {
-  async register(name, email, password) {
+  async register(name, email, password, username) {
     const response = await fetch(`${API_URL}/register`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ name, email, password }),
+      body: JSON.stringify({ name, email, password, username }),
     });
 
     const data = await response.json();

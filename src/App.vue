@@ -64,6 +64,7 @@
         :data="summaryData"
         @done="stage = 'dashboard'"
         @new="onStartNew"
+        @show-auth="showAuthModal = true"
       />
       <DashboardView
         v-else
@@ -83,6 +84,14 @@
       :lang="lang"
       @done="onNameDone"
     />
+
+    <AuthModal
+      :visible="showAuthModal"
+      :is-dark="isDark"
+      initial-mode="register"
+      @close="showAuthModal = false"
+      @success="onAuthSuccess"
+    />
   </div>
 </template>
 
@@ -97,6 +106,7 @@ import EvaluationScreen from "./components/EvaluationScreen.vue";
 import InsightScreen from "./components/InsightScreen.vue";
 import ActionPlanScreen from "./components/ActionPlanScreen.vue";
 import SummaryScreen from "./components/SummaryScreen.vue";
+import AuthModal from "./components/AuthModal.vue";
 
 const stage = ref("loading");
 const globalAudio = ref(null);
@@ -112,6 +122,13 @@ const summaryData = ref({});
 const nameModalRef = ref(null);
 const curtainVisible = ref(false);
 const lang = ref("en"); // default english, will be set by GreetingScreen
+const showAuthModal = ref(false);
+
+function onAuthSuccess(user) {
+  showAuthModal.value = false;
+  // After auth (register or login), go directly to dashboard (GardenView)
+  stage.value = "dashboard";
+}
 
 async function onLoadingDone(darkState, skipIntro = false) {
   isDark.value = darkState;

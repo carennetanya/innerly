@@ -103,17 +103,7 @@
           Start Your Inner Space
         </button>
 
-        <!-- Skip Intro - as text link below button -->
-        <Transition name="skip-fade">
-          <span
-            v-if="showSkip"
-            class="skip-intro-text"
-            :class="{ 'is-dark': isDark }"
-            @click="handleStart(true)"
-          >
-            Lewati Intro ↗
-          </span>
-        </Transition>
+
       </div>
 
       <!-- ══ CD PLAYER ══ -->

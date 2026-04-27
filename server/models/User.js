@@ -1,19 +1,26 @@
-const users = [];
+import pool from "../db.js";
 
 export default {
-  findOne(query) {
-    return users.find((u) => u.email === query.email) || null;
+  async findOne(query) {
+    const keys = Object.keys(query);
+    const values = Object.values(query);
+    const conditions = keys.map((k, i) => `${k} = $${i + 1}`).join(" AND ");
+    const result = await pool.query(
+      `SELECT * FROM users WHERE ${conditions} LIMIT 1`,
+      values,
+    );
+    return result.rows[0] || null;
   },
 
   async create(data) {
-    const newUser = {
-      _id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-      name: data.name,
-      email: data.email,
-      password: data.password,
-      createdAt: new Date(),
-    };
-    users.push(newUser);
-    return newUser;
+    const result = await pool.query(
+      `INSERT INTO users (name, username, email, password)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id, name, username, email, created_at`,
+      [data.name, data.username, data.email, data.password],
+    );
+    const user = result.rows[0];
+    user._id = user.id;
+    return user;
   },
 };

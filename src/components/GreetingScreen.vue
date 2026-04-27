@@ -50,6 +50,17 @@
         :class="{ 'gs-dot-active': currentIndex === i - 1 }"
       ></span>
     </div>
+
+    <Transition name="gs-skip-fade">
+      <span
+        v-if="showPhrases"
+        class="gs-skip-text"
+        :data-dark="isDark"
+        @click="emit('done', selectedLang)"
+      >
+        Lewati Intro ↗
+      </span>
+    </Transition>
   </div>
 </template>
 
@@ -110,7 +121,6 @@ function chooseLang(lang) {
   selectedLang.value = lang;
   showLangPicker.value = false;
 
-  // Small delay then start phrases
   setTimeout(() => {
     phrases.value = phrasesMap[lang];
     current.value = phrases.value[0];
@@ -439,6 +449,41 @@ function chooseLang(lang) {
 }
 .greeting-screen[data-dark="true"] .gs-dot-active {
   background: #a78bfa !important;
+}
+
+/* Skip intro text */
+.gs-skip-text {
+  position: absolute;
+  bottom: 40px;
+  right: 28px;
+  font-family: "Outfit", sans-serif;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: rgba(74, 63, 122, 0.5);
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: color 0.2s ease;
+  user-select: none;
+}
+.gs-skip-text:hover {
+  color: rgba(74, 63, 122, 0.85);
+}
+.gs-skip-text[data-dark="true"] {
+  color: rgba(167, 139, 250, 0.45);
+}
+.gs-skip-text[data-dark="true"]:hover {
+  color: rgba(167, 139, 250, 0.85);
+}
+
+.gs-skip-fade-enter-active {
+  transition: opacity 0.5s ease;
+}
+.gs-skip-fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+.gs-skip-fade-enter-from,
+.gs-skip-fade-leave-to {
+  opacity: 0;
 }
 
 /* transition */

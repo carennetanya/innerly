@@ -4,25 +4,63 @@
       <div class="auth-modal" :class="{ 'is-dark': isDark }">
         <button class="auth-close" @click="close">×</button>
 
+        <!-- Tab switcher -->
+        <div class="auth-tabs">
+          <button
+            class="auth-tab"
+            :class="{ active: !isLogin }"
+            @click="
+              isLogin = false;
+              error = '';
+            "
+          >
+            Daftar
+          </button>
+          <button
+            class="auth-tab"
+            :class="{ active: isLogin }"
+            @click="
+              isLogin = true;
+              error = '';
+            "
+          >
+            Masuk
+          </button>
+        </div>
+
         <div class="auth-header">
-          <h2>{{ isLogin ? "Welcome Back" : "Create Account" }}</h2>
+          <h2>
+            {{ isLogin ? "Selamat Datang Kembali 👋" : "Buat Akun Innerly 🌱" }}
+          </h2>
           <p>
             {{
               isLogin
-                ? "Sign in to continue your journey"
-                : "Start your journaling journey"
+                ? "Masuk untuk melanjutkan perjalananmu"
+                : "Simpan kebunmu dan pantau progresmu dari waktu ke waktu"
             }}
           </p>
         </div>
 
         <form @submit.prevent="handleSubmit" class="auth-form">
           <div v-if="!isLogin" class="form-group">
-            <label>Name</label>
+            <label>Nama</label>
             <input
               v-model="formData.name"
               type="text"
-              placeholder="Your name"
+              placeholder="Nama kamu"
               required
+            />
+          </div>
+
+          <div v-if="!isLogin" class="form-group">
+            <label>Username</label>
+            <input
+              v-model="formData.username"
+              type="text"
+              placeholder="username_kamu"
+              required
+              pattern="[a-zA-Z0-9_]+"
+              title="Hanya huruf, angka, dan underscore"
             />
           </div>
 
@@ -31,7 +69,7 @@
             <input
               v-model="formData.email"
               type="email"
-              placeholder="your@email.com"
+              placeholder="email@kamu.com"
               required
             />
           </div>
@@ -47,26 +85,35 @@
             />
           </div>
 
+          <div v-if="!isLogin" class="form-group">
+            <label>Konfirmasi Password</label>
+            <input
+              v-model="formData.confirmPassword"
+              type="password"
+              placeholder="••••••••"
+              required
+              minlength="6"
+            />
+          </div>
+
           <div v-if="error" class="auth-error">{{ error }}</div>
 
           <button type="submit" class="auth-submit" :disabled="loading">
-            {{
-              loading
-                ? "Please wait..."
-                : isLogin
-                  ? "Sign In"
-                  : "Create Account"
-            }}
+            {{ loading ? "Mohon tunggu..." : isLogin ? "Masuk" : "Buat Akun" }}
           </button>
         </form>
 
         <div class="auth-footer">
           <p>
-            {{
-              isLogin ? "Don't have an account?" : "Already have an account?"
-            }}
-            <button @click="toggleMode" class="auth-toggle">
-              {{ isLogin ? "Sign Up" : "Sign In" }}
+            {{ isLogin ? "Belum punya akun?" : "Sudah punya akun?" }}
+            <button
+              @click="
+                isLogin = !isLogin;
+                error = '';
+              "
+              class="auth-toggle"
+            >
+              {{ isLogin ? "Daftar" : "Masuk" }}
             </button>
           </p>
         </div>
@@ -76,7 +123,7 @@
 </template>
 
 <script setup>
-import { ref, reactive } from "vue";
+import { ref, reactive, watch } from "vue";
 import { authService } from "../services/auth.js";
 
 const props = defineProps({
@@ -84,7 +131,7 @@ const props = defineProps({
   isDark: Boolean,
   initialMode: {
     type: String,
-    default: "login",
+    default: "register",
   },
 });
 
@@ -94,16 +141,20 @@ const isLogin = ref(props.initialMode === "login");
 const loading = ref(false);
 const error = ref("");
 
+watch(
+  () => props.initialMode,
+  (v) => {
+    isLogin.value = v === "login";
+  },
+);
+
 const formData = reactive({
   name: "",
+  username: "",
   email: "",
   password: "",
+  confirmPassword: "",
 });
-
-const toggleMode = () => {
-  isLogin.value = !isLogin.value;
-  error.value = "";
-};
 
 const close = () => {
   emit("close");
@@ -112,13 +163,32 @@ const close = () => {
 
 const resetForm = () => {
   formData.name = "";
+  formData.username = "";
   formData.email = "";
   formData.password = "";
+  formData.confirmPassword = "";
   error.value = "";
 };
 
 const handleSubmit = async () => {
   error.value = "";
+
+  // Client-side validation for register
+  if (!isLogin.value) {
+    if (!formData.username.trim()) {
+      error.value = "Username tidak boleh kosong.";
+      return;
+    }
+    if (!/^[a-zA-Z0-9_]+$/.test(formData.username)) {
+      error.value = "Username hanya boleh huruf, angka, dan underscore.";
+      return;
+    }
+    if (formData.password !== formData.confirmPassword) {
+      error.value = "Password dan konfirmasi password tidak sama.";
+      return;
+    }
+  }
+
   loading.value = true;
 
   try {
@@ -131,10 +201,10 @@ const handleSubmit = async () => {
         formData.name,
         formData.email,
         formData.password,
+        formData.username,
       );
     }
 
-    // Save token and user
     authService.saveToken(data.token);
     authService.saveUser(data.user);
 
@@ -152,134 +222,207 @@ const handleSubmit = async () => {
 .auth-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(30, 10, 60, 0.55);
+  backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 10000;
+  padding: 20px;
 }
 
 .auth-modal {
-  background: #faf8f5;
-  border-radius: 16px;
+  background: #faf8ff;
+  border-radius: 24px;
   padding: 32px;
-  width: 90%;
+  width: 100%;
   max-width: 400px;
   position: relative;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  box-shadow:
+    0 24px 72px rgba(80, 40, 180, 0.22),
+    0 2px 10px rgba(80, 40, 180, 0.08);
+  border: 1px solid rgba(160, 120, 250, 0.15);
 }
 
 .auth-modal.is-dark {
-  background: #1a1a1a;
-  color: #fff;
+  background: #0f0b1e;
+  border-color: rgba(167, 139, 250, 0.18);
+  color: #ede8ff;
 }
 
 .auth-close {
   position: absolute;
   top: 16px;
   right: 16px;
-  background: none;
+  background: rgba(124, 108, 168, 0.1);
   border: none;
-  font-size: 24px;
+  font-size: 20px;
   cursor: pointer;
-  color: #666;
+  color: #7c6ca8;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+.auth-close:hover {
+  background: rgba(124, 108, 168, 0.2);
+}
+.is-dark .auth-close {
+  color: #a78bfa;
+  background: rgba(167, 139, 250, 0.1);
+}
+
+/* Tabs */
+.auth-tabs {
+  display: flex;
+  background: rgba(124, 108, 168, 0.08);
+  border-radius: 12px;
+  padding: 4px;
+  margin-bottom: 20px;
+  gap: 4px;
+}
+.auth-tab {
+  flex: 1;
+  padding: 9px;
+  border-radius: 9px;
+  border: none;
+  background: transparent;
+  font-family: "Outfit", sans-serif;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: rgba(100, 80, 160, 0.5);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.auth-tab.active {
+  background: white;
+  color: #5b4a9a;
+  box-shadow: 0 2px 8px rgba(80, 40, 160, 0.12);
+}
+.is-dark .auth-tab {
+  color: rgba(180, 160, 255, 0.4);
+}
+.is-dark .auth-tab.active {
+  background: rgba(167, 139, 250, 0.15);
+  color: #c4b5fd;
+  box-shadow: none;
 }
 
 .auth-header {
   text-align: center;
-  margin-bottom: 24px;
+  margin-bottom: 22px;
 }
-
 .auth-header h2 {
-  margin: 0 0 8px;
-  font-size: 24px;
-  font-weight: 600;
+  margin: 0 0 6px;
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #2d1f6e;
+  line-height: 1.3;
 }
-
+.is-dark .auth-header h2 {
+  color: #e8d8ff;
+}
 .auth-header p {
   margin: 0;
-  color: #666;
-  font-size: 14px;
+  color: rgba(80, 60, 140, 0.6);
+  font-size: 0.82rem;
+  font-family: "Outfit", sans-serif;
+  line-height: 1.5;
 }
-
 .is-dark .auth-header p {
-  color: #999;
+  color: rgba(180, 160, 255, 0.55);
 }
 
 .auth-form {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
 }
 
 .form-group {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
 }
-
 .form-group label {
-  font-size: 13px;
-  font-weight: 500;
-  color: #333;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: rgba(80, 60, 140, 0.65);
+  font-family: "Outfit", sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
-
 .is-dark .form-group label {
-  color: #ccc;
+  color: rgba(180, 160, 255, 0.5);
 }
 
 .form-group input {
   padding: 12px 16px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  font-size: 15px;
-  transition: border-color 0.2s;
-}
-
-.form-group input:focus {
+  border: 1.5px solid rgba(124, 108, 168, 0.2);
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-family: "Outfit", sans-serif;
+  background: rgba(255, 255, 255, 0.7);
+  color: #2d1f6e;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
   outline: none;
-  border-color: #8b7355;
 }
-
+.form-group input::placeholder {
+  color: rgba(100, 80, 160, 0.35);
+}
+.form-group input:focus {
+  border-color: #7c6ca8;
+  box-shadow: 0 0 0 3px rgba(124, 108, 168, 0.12);
+}
 .is-dark .form-group input {
-  background: #2a2a2a;
-  border-color: #444;
-  color: #fff;
+  background: rgba(30, 20, 50, 0.7);
+  border-color: rgba(167, 139, 250, 0.2);
+  color: #e8d8ff;
 }
-
 .is-dark .form-group input:focus {
-  border-color: #a08060;
+  border-color: #a78bfa;
+  box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.12);
 }
 
 .auth-error {
-  background: #fee;
-  color: #c00;
+  background: rgba(220, 38, 38, 0.08);
+  color: #dc2626;
   padding: 10px 14px;
-  border-radius: 8px;
-  font-size: 13px;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  font-family: "Outfit", sans-serif;
+  border: 1px solid rgba(220, 38, 38, 0.15);
 }
-
 .is-dark .auth-error {
-  background: #3a2020;
-  color: #f88;
+  background: rgba(220, 38, 38, 0.1);
+  color: #f87171;
 }
 
 .auth-submit {
-  background: #8b7355;
+  background: linear-gradient(135deg, #5b4a9a 0%, #9333ea 100%);
   color: #fff;
   border: none;
   padding: 14px;
-  border-radius: 8px;
-  font-size: 15px;
-  font-weight: 600;
+  border-radius: 50px;
+  font-family: "Outfit", sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.22s ease;
+  box-shadow: 0 6px 22px rgba(147, 51, 234, 0.3);
+  margin-top: 4px;
 }
-
 .auth-submit:hover:not(:disabled) {
-  background: #6d5a45;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(147, 51, 234, 0.42);
+  filter: brightness(1.06);
 }
-
 .auth-submit:disabled {
   opacity: 0.6;
   cursor: not-allowed;
@@ -287,35 +430,45 @@ const handleSubmit = async () => {
 
 .auth-footer {
   text-align: center;
-  margin-top: 20px;
-  font-size: 14px;
-  color: #666;
+  margin-top: 16px;
+  font-size: 0.82rem;
+  color: rgba(80, 60, 140, 0.5);
+  font-family: "Outfit", sans-serif;
 }
-
 .is-dark .auth-footer {
-  color: #999;
+  color: rgba(180, 160, 255, 0.4);
 }
-
 .auth-toggle {
   background: none;
   border: none;
-  color: #8b7355;
-  font-weight: 600;
+  color: #7c6ca8;
+  font-weight: 700;
   cursor: pointer;
   margin-left: 4px;
+  font-family: "Outfit", sans-serif;
+  font-size: 0.82rem;
 }
-
 .auth-toggle:hover {
   text-decoration: underline;
+  color: #5b4a9a;
+}
+.is-dark .auth-toggle {
+  color: #a78bfa;
 }
 
-/* Transition animations */
 .modal-fade-enter-active,
 .modal-fade-leave-active {
   transition: opacity 0.3s ease;
 }
-
-.modal-fade-enter-from,
+.modal-fade-enter-active .auth-modal {
+  transition: transform 0.3s cubic-bezier(0.34, 1.3, 0.64, 1);
+}
+.modal-fade-enter-from {
+  opacity: 0;
+}
+.modal-fade-enter-from .auth-modal {
+  transform: scale(0.9) translateY(16px);
+}
 .modal-fade-leave-to {
   opacity: 0;
 }
