@@ -205,6 +205,8 @@
 
 <script setup>
 import { ref, computed, onMounted } from "vue";
+import { commitmentService } from "../services/commitment.js";
+import { authService } from "../services/auth.js";
 
 const GEMINI_API_KEY = "AIzaSyBLut0UkrsMQe-dKbkTVh8QIUoDWDJTqig";
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
@@ -360,7 +362,32 @@ async function generateSummary() {
   }
 }
 
-function handleSave() {
+async function handleSave() {
+  try {
+    const user = authService.getUser && authService.getUser();
+    if (user && user.id && props.data.action) {
+      const today = new Date();
+      const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+      await commitmentService.saveCommitment(user.id, {
+        date: todayKey,
+        action: props.data.action,
+        moodImg: props.data.moodImg || "",
+        mood: props.data.mood || "",
+      });
+    } else {
+      // Fallback: simpan ke localStorage kalau belum login
+      const today = new Date();
+      const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+      localStorage.setItem("innerly_reminder", JSON.stringify({
+        date: todayKey,
+        action: props.data.action,
+        moodImg: props.data.moodImg || "",
+        mood: props.data.mood || "",
+      }));
+    }
+  } catch (err) {
+    console.error("Failed to save commitment:", err);
+  }
   savedToast.value = true;
   setTimeout(() => (savedToast.value = false), 3500);
 }

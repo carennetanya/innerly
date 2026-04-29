@@ -62,7 +62,7 @@
         :is-dark="isDark"
         :lang="lang"
         :data="summaryData"
-        @done="stage = 'dashboard'"
+        @done="onSummaryDone"
         @new="onStartNew"
         @show-auth="showAuthModal = true"
       />
@@ -74,7 +74,9 @@
         :initial-reflection="initialReflection"
         :initial-mood="initialMood"
         :lang="lang"
+        :pending-reflection="pendingReflection"
         @toggle-theme="isDark = !isDark"
+        @logout="onLogout"
       />
     </Transition>
 
@@ -107,6 +109,8 @@ import InsightScreen from "./components/InsightScreen.vue";
 import ActionPlanScreen from "./components/ActionPlanScreen.vue";
 import SummaryScreen from "./components/SummaryScreen.vue";
 import AuthModal from "./components/AuthModal.vue";
+import { authService } from "./services/auth.js";
+import { reflectionService } from "./services/reflection.js";
 
 const stage = ref("loading");
 const globalAudio = ref(null);
@@ -123,15 +127,75 @@ const nameModalRef = ref(null);
 const curtainVisible = ref(false);
 const lang = ref("en"); // default english, will be set by GreetingScreen
 const showAuthModal = ref(false);
+const pendingReflection = ref(null); // refleksi onboarding yang belum tersimpan ke dashboard
+
+// --- Returning user helpers ---
+function getSavedUser() {
+  try {
+    const raw = localStorage.getItem("innerly_user");
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+function saveUser(name, language) {
+  try {
+    localStorage.setItem("innerly_user", JSON.stringify({ name, lang: language }));
+  } catch {}
+}
 
 function onAuthSuccess(user) {
   showAuthModal.value = false;
+  // Simpan refleksi onboarding jika ada (user baru register setelah isi refleksi pertama)
+  if (summaryData.value?.mood || summaryData.value?.trigger) {
+    try {
+      const today = new Date()
+      const dateKey = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`
+      const mood = summaryData.value?.mood ?? ''
+      const newRef = {
+        date: dateKey,
+        mood: mood,
+        moods: mood ? [mood] : [],
+        trigger: summaryData.value?.trigger ?? '',
+        wentWell: summaryData.value?.wentWell ?? '',
+        improve: summaryData.value?.needsWork ?? '',
+        insight: summaryData.value?.insight ?? '',
+        action: summaryData.value?.action ?? '',
+      }
+      const existing = JSON.parse(localStorage.getItem('innerly_reflections') || '[]')
+      const filtered = existing.filter(r => r.date !== dateKey)
+      const updated = [...filtered, newRef]
+      localStorage.setItem('innerly_reflections', JSON.stringify(updated))
+      pendingReflection.value = newRef
+
+      // Simpan ke database
+      if (user && user.id) {
+        reflectionService.saveReflection(user.id, newRef).catch(err => {
+          console.error("Failed to save onboarding reflection to database:", err)
+        })
+      }
+    } catch {}
+  }
   // After auth (register or login), go directly to dashboard (GardenView)
   stage.value = "dashboard";
 }
 
 async function onLoadingDone(darkState, skipIntro = false) {
   isDark.value = darkState;
+
+  // Check if user already has saved profile (returning user)
+  const savedUser = getSavedUser();
+  if (savedUser?.name) {
+    userName.value = savedUser.name;
+    lang.value = savedUser.lang || "en";
+    // Skip all onboarding — go straight to dashboard
+    curtainVisible.value = true;
+    await new Promise((r) => setTimeout(r, 400));
+    stage.value = "dashboard";
+    await new Promise((r) => setTimeout(r, 150));
+    curtainVisible.value = false;
+    return;
+  }
 
   if (skipIntro) {
     // Skip intro - go directly to NameModal
@@ -159,6 +223,8 @@ function onGreetingDone(selectedLang) {
 function onNameDone(name, reflection) {
   userName.value = name;
   initialReflection.value = reflection;
+  // Save user profile so next visit skips onboarding
+  saveUser(name, lang.value);
   stage.value = "moodcheck";
 }
 
@@ -196,6 +262,56 @@ function onActionPlanDone(actionData) {
     committed: actionData.committed || false,
   };
   stage.value = "summary";
+}
+
+function onLogout() {
+  // Reset semua state
+  userName.value = ""
+  initialReflection.value = ""
+  initialMood.value = null
+  initialEvaluation.value = null
+  initialInsight.value = null
+  initialAction.value = null
+  summaryData.value = {}
+  insightContext.value = {}
+  // Kembali ke loading screen (pemilihan dark/light mode)
+  stage.value = "loading"
+}
+
+function onSummaryDone() {
+  // Simpan refleksi onboarding ke localStorage supaya bunga muncul di kalender
+  try {
+    const today = new Date()
+    const dateKey = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`
+    const mood = summaryData.value?.mood ?? ''
+    const newRef = {
+      date: dateKey,
+      mood: mood,
+      moods: mood ? [mood] : [],
+      trigger: summaryData.value?.trigger ?? '',
+      wentWell: summaryData.value?.wentWell ?? '',
+      improve: summaryData.value?.needsWork ?? '',
+      insight: summaryData.value?.insight ?? '',
+      action: summaryData.value?.action ?? '',
+    }
+    const existing = JSON.parse(localStorage.getItem('innerly_reflections') || '[]')
+    // Hindari duplikat di hari yang sama
+    const filtered = existing.filter(r => r.date !== dateKey)
+    const updated = [...filtered, newRef]
+    localStorage.setItem('innerly_reflections', JSON.stringify(updated))
+    // Set pendingReflection agar DashboardView langsung tampilkan bunga tanpa reload
+    pendingReflection.value = newRef
+
+    // Simpan ke database jika user sudah login
+    const user = authService.getUser && authService.getUser()
+    const userId = user?.id || user?._id
+    if (userId) {
+      reflectionService.saveReflection(userId, newRef).catch(err => {
+        console.error("Failed to save reflection to database:", err)
+      })
+    }
+  } catch {}
+  stage.value = 'dashboard'
 }
 
 function onStartNew() {

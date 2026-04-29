@@ -1,11 +1,9 @@
 <template>
-  <div class="gj-wrap">
-    <!-- Progress bar -->
+  <div class="gj-wrap" :class="{ 'is-dark': isDark }">
     <div class="gj-progress-bar">
       <div class="gj-progress-fill" :style="{ width: progressPct + '%' }"></div>
     </div>
 
-    <!-- Step indicators -->
     <div class="gj-steps">
       <div
         v-for="(s, i) in steps"
@@ -23,327 +21,335 @@
       </div>
     </div>
 
-    <!-- ═══════ LAYER 1: THE TRIGGER ═══════ -->
-    <Transition name="gj-slide" mode="out-in">
-      <div v-if="currentStep === 0" key="step0" class="gj-card">
-        <div class="gj-card-header">
-          <span class="gj-layer-tag">{{ t.step1tag }}</span>
-          <span class="gj-layer-emoji">🌱</span>
-        </div>
-        <h2 class="gj-question">{{ t.step1q }}</h2>
-        <p class="gj-hint">{{ t.step1hint }}</p>
-        <textarea
-          v-model="answers.trigger"
-          class="gj-textarea"
-          :placeholder="t.step1ph"
-          rows="5"
-          autofocus
-        ></textarea>
-        <div class="gj-char-count">
-          {{ t.step1chars(answers.trigger.length) }}
-        </div>
-        <div class="gj-actions">
-          <button class="gj-btn-back" @click="$emit('back')">
-            {{ t.step1back }}
-          </button>
-          <button
-            class="gj-btn-next"
-            :disabled="answers.trigger.trim().length < 5"
-            @click="currentStep = 1"
-          >
-            {{ t.step2selected ? "" : "" }}Lanjut
-            <span class="gj-arrow">→</span>
-          </button>
-        </div>
-      </div>
+    <div class="gj-book">
+      <div class="gj-spine"></div>
 
-      <!-- ═══════ LAYER 2: THE MOOD ═══════ -->
-      <div v-else-if="currentStep === 1" key="step1" class="gj-card">
-        <div class="gj-card-header">
-          <span class="gj-layer-tag">{{ t.step2tag }}</span>
-          <span class="gj-layer-emoji">💜</span>
+      <div class="gj-page gj-page-left">
+        <div class="gj-page-lines">
+          <div v-for="i in 14" :key="i" class="gj-line"></div>
         </div>
-        <h2 class="gj-question">{{ t.step2q }}</h2>
-        <p class="gj-hint">{{ t.step2hint }}</p>
-        <div class="gj-mood-grid">
-          <button
-            v-for="m in moodOptions"
-            :key="m.label"
-            class="gj-mood-btn"
-            :class="{ selected: answers.moods.includes(m.label) }"
-            :style="{ '--mc': m.color }"
-            @click="toggleMood(m.label)"
-          >
-            <span class="gj-mood-emoji">{{ m.emoji }}</span>
-            <span class="gj-mood-label">{{ m.label }}</span>
-          </button>
-        </div>
-        <div class="gj-mood-selected" v-if="answers.moods.length > 0">
-          <span class="gj-mood-selected-label">{{ t.step2selected }}</span>
-          <span v-for="m in answers.moods" :key="m" class="gj-mood-tag"
-            >{{ moodOptions.find((x) => x.label === m)?.emoji }} {{ m }}</span
-          >
-        </div>
-        <div class="gj-actions">
-          <button class="gj-btn-back" @click="currentStep = 0">
-            {{ t.step2back }}
-          </button>
-          <button
-            class="gj-btn-next"
-            :disabled="answers.moods.length === 0"
-            @click="currentStep = 2"
-          >
-            {{ t.step2selected ? "" : "" }}Lanjut
-            <span class="gj-arrow">→</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- ═══════ LAYER 3: THE EVALUATION ═══════ -->
-      <div v-else-if="currentStep === 2" key="step2" class="gj-card">
-        <div class="gj-card-header">
-          <span class="gj-layer-tag">{{ t.step3tag }}</span>
-          <span class="gj-layer-emoji">⚖️</span>
-        </div>
-        <h2 class="gj-question">{{ t.step3q }}</h2>
-        <p class="gj-hint">{{ t.step3hint }}</p>
-        <div class="gj-two-cols">
-          <div class="gj-col gj-col-good">
-            <div class="gj-col-header">
-              <span class="gj-col-icon">✅</span>
-              <span class="gj-col-title">{{ t.step3good }}</span>
-            </div>
-            <textarea
-              v-model="answers.wentWell"
-              class="gj-textarea gj-textarea-sm"
-              :placeholder="t.step3goodph"
-              rows="4"
-            ></textarea>
+        <div class="gj-page-content">
+          <div v-if="currentStep === 0" class="gj-side-panel">
+            <span class="gj-layer-tag">{{ t.step1tag }}</span>
+            <h2 class="gj-page-title">{{ t.step1q }}</h2>
+            <p class="gj-page-hint">{{ t.step1hint }}</p>
+            <p class="gj-page-note">{{ t.step1note }}</p>
           </div>
-          <div class="gj-col gj-col-improve">
-            <div class="gj-col-header">
-              <span class="gj-col-icon">🔧</span>
-              <span class="gj-col-title">{{ t.step3improve }}</span>
+
+          <div v-else-if="currentStep === 1" class="gj-side-panel">
+            <span class="gj-layer-tag">{{ t.step2tag }}</span>
+            <h2 class="gj-page-title">{{ t.step2q }}</h2>
+            <p class="gj-page-hint">{{ t.step2hint }}</p>
+            <div v-if="answers.mood" class="gj-page-summary">
+              <span class="gj-mood-emoji-large">
+                <img v-if="answers.moodImg" :src="answers.moodImg" :alt="answers.mood" width="48" height="48" />
+              </span>
+              <p>{{ t.step2selected }}</p>
+              <p class="gj-page-selected">{{ answers.mood }}</p>
             </div>
-            <textarea
-              v-model="answers.improve"
-              class="gj-textarea gj-textarea-sm"
-              :placeholder="t.step3improveph"
-              rows="4"
-            ></textarea>
+          </div>
+
+          <div v-else-if="currentStep === 2" class="gj-side-panel">
+            <span class="gj-layer-tag">{{ t.step3tag }}</span>
+            <h2 class="gj-page-title">{{ t.step3q }}</h2>
+            <p class="gj-page-hint">{{ t.step3hint }}</p>
+          </div>
+
+          <div v-else-if="currentStep === 3" class="gj-side-panel">
+            <span class="gj-layer-tag">{{ t.step4tag }}</span>
+            <h2 class="gj-page-title">{{ t.step4q }}</h2>
+            <p class="gj-page-hint">{{ t.step4hint }}</p>
+          </div>
+
+          <div v-else-if="currentStep === 4" class="gj-side-panel">
+            <span class="gj-layer-tag">{{ t.step5tag }}</span>
+            <h2 class="gj-page-title">{{ t.step5q }}</h2>
+            <p class="gj-page-hint">{{ t.step5hint }}</p>
+          </div>
+
+          <div v-else class="gj-side-panel gj-summary-side">
+            <div class="gj-summary-hero">
+              <div class="gj-summary-icon">🌟</div>
+              <h2 class="gj-summary-title">{{ t.sumTitle }}</h2>
+              <p class="gj-summary-sub">{{ t.sumSub }}</p>
+            </div>
           </div>
         </div>
-        <div class="gj-actions">
-          <button class="gj-btn-back" @click="currentStep = 1">
-            {{ t.step3back }}
-          </button>
-          <button
-            class="gj-btn-next"
-            :disabled="
-              answers.wentWell.trim().length < 3 &&
-              answers.improve.trim().length < 3
-            "
-            @click="currentStep = 3"
-          >
-            {{ t.step2selected ? "" : "" }}Lanjut
-            <span class="gj-arrow">→</span>
-          </button>
-        </div>
+        <div class="gj-page-number">{{ leftPageNumber }}</div>
       </div>
 
-      <!-- ═══════ LAYER 4: THE INSIGHT ═══════ -->
-      <div v-else-if="currentStep === 3" key="step3" class="gj-card">
-        <div class="gj-card-header">
-          <span class="gj-layer-tag">{{ t.step4tag }}</span>
-          <span class="gj-layer-emoji">💡</span>
+      <div class="gj-page gj-page-right">
+        <div class="gj-page-lines">
+          <div v-for="i in 14" :key="i" class="gj-line"></div>
         </div>
-        <h2 class="gj-question">{{ t.step4q }}</h2>
-        <p class="gj-hint">{{ t.step4hint }}</p>
-        <textarea
-          v-model="answers.insight"
-          class="gj-textarea"
-          :placeholder="t.step4ph"
-          rows="5"
-        ></textarea>
-        <button
-          class="gj-ai-btn"
-          @click="fetchAiSuggestion"
-          :disabled="aiLoading"
-        >
-          <span v-if="aiLoading" class="gj-ai-spinner">⟳</span>
-          <span v-else>✨</span>
-          {{ aiLoading ? t.aiLoading : t.aiBtn }}
-        </button>
-        <Transition name="gj-fade">
-          <div v-if="aiSuggestion" class="gj-ai-suggestion">
-            <div class="gj-ai-suggestion-header">
-              <span>{{ t.aiHeader }}</span>
-              <button class="gj-ai-close" @click="aiSuggestion = ''">
-                &times;
+        <div class="gj-page-content">
+          <div v-if="currentStep === 0" class="gj-step-content">
+            <textarea
+              v-model="answers.trigger"
+              class="gj-textarea"
+              :placeholder="t.step1ph"
+              rows="6"
+              autofocus
+            ></textarea>
+            <div class="gj-char-count">
+              {{ t.step1chars(answers.trigger.length) }}
+            </div>
+            <div class="gj-actions">
+              <button class="gj-btn-back" @click="$emit('back')">
+                {{ t.step1back }}
+              </button>
+              <button
+                class="gj-btn-next"
+                :disabled="answers.trigger.trim().length < 5"
+                @click="currentStep = 1"
+              >
+                {{ t.nextBtn }}
               </button>
             </div>
-            <p class="gj-ai-suggestion-text">{{ aiSuggestion }}</p>
-            <button
-              class="gj-ai-use-btn"
-              @click="
-                answers.insight = answers.insight
-                  ? answers.insight + '\n\n' + aiSuggestion
-                  : aiSuggestion;
-                aiSuggestion = '';
-              "
-            >
-              {{ t.aiUsebtn }}
-            </button>
           </div>
-        </Transition>
-        <div class="gj-actions">
-          <button class="gj-btn-back" @click="currentStep = 2">
-            {{ t.step4back }}
-          </button>
-          <button
-            class="gj-btn-next"
-            :disabled="answers.insight.trim().length < 5"
-            @click="currentStep = 4"
-          >
-            {{ t.step2selected ? "" : "" }}Lanjut
-            <span class="gj-arrow">→</span>
-          </button>
-        </div>
-      </div>
 
-      <!-- ═══════ LAYER 5: THE ACTION PLAN ═══════ -->
-      <div v-else-if="currentStep === 4" key="step4" class="gj-card">
-        <div class="gj-card-header">
-          <span class="gj-layer-tag">{{ t.step5tag }}</span>
-          <span class="gj-layer-emoji">🎯</span>
-        </div>
-        <h2 class="gj-question">{{ t.step5q }}</h2>
-        <p class="gj-hint">{{ t.step5hint }}</p>
-        <div class="gj-commitment-wrap">
-          <span class="gj-commitment-prefix">{{ t.step5prefix }}</span>
-          <textarea
-            v-model="answers.action"
-            class="gj-textarea gj-textarea-commitment"
-            :placeholder="t.step5ph"
-            rows="3"
-          ></textarea>
-        </div>
-        <div class="gj-checklist" v-if="answers.action.trim().length > 0">
-          <div class="gj-checklist-item">
-            <input
-              type="checkbox"
-              v-model="actionCommitted"
-              id="commit-check"
-              class="gj-check-input"
-            />
-            <label for="commit-check" class="gj-check-label">
-              {{ t.step5commit }}
-            </label>
-          </div>
-        </div>
-        <div class="gj-actions">
-          <button class="gj-btn-back" @click="currentStep = 3">
-            {{ t.step5back }}
-          </button>
-          <button
-            class="gj-btn-next gj-btn-finish"
-            :disabled="answers.action.trim().length < 5"
-            @click="finishReflection"
-          >
-            {{ t.step5finish }}
-          </button>
-        </div>
-      </div>
-
-      <!-- ═══════ LAYER 6: THE SUMMARY ═══════ -->
-      <div
-        v-else-if="currentStep === 5"
-        key="step5"
-        class="gj-card gj-summary-card"
-      >
-        <div class="gj-confetti-wrap">
-          <span
-            v-for="i in 12"
-            :key="i"
-            class="gj-confetti-piece"
-            :style="getConfettiStyle(i)"
-          ></span>
-        </div>
-        <div class="gj-summary-hero">
-          <div class="gj-summary-icon">🌟</div>
-          <h2 class="gj-summary-title">{{ t.sumTitle }}</h2>
-          <p class="gj-summary-sub">{{ t.sumSub }}</p>
-        </div>
-
-        <div class="gj-summary-body">
-          <div class="gj-summary-section" v-if="answers.trigger">
-            <div class="gj-summary-section-label">{{ t.sum1label }}</div>
-            <div class="gj-summary-section-text">{{ answers.trigger }}</div>
-          </div>
-          <div class="gj-summary-section" v-if="answers.moods.length">
-            <div class="gj-summary-section-label">{{ t.sum2label }}</div>
-            <div class="gj-summary-moods-row">
-              <span
-                v-for="m in answers.moods"
-                :key="m"
-                class="gj-summary-mood-tag"
+          <div v-else-if="currentStep === 1" class="gj-step-content">
+            <div class="gj-mood-grid">
+              <button
+                v-for="m in moodOptions"
+                :key="m.label"
+                class="gj-mood-btn"
+                :class="{ selected: answers.mood === m.label }"
+                :style="{ '--mc': m.color }"
+                @click="selectMood(m.label)"
               >
-                {{ moodOptions.find((x) => x.label === m)?.emoji }} {{ m }}
+                <span class="gj-mood-emoji">
+                  <img :src="m.img" :alt="m.label" width="38" height="38" />
+                </span>
+                <span class="gj-mood-label">{{ m.label }}</span>
+              </button>
+            </div>
+            <div class="gj-note-card">
+              <label class="gj-note-label">{{ t.moodNoteLabel }}</label>
+              <textarea
+                v-model="answers.moodNote"
+                class="gj-textarea gj-textarea-sm"
+                :placeholder="t.moodNotePh"
+                rows="3"
+              ></textarea>
+            </div>
+            <div class="gj-actions">
+              <button class="gj-btn-back" @click="currentStep = 0">
+                {{ t.step2back }}
+              </button>
+              <button
+                class="gj-btn-next"
+                :disabled="!answers.mood"
+                @click="currentStep = 2"
+              >
+                {{ t.nextBtn }}
+              </button>
+            </div>
+          </div>
+
+          <div v-else-if="currentStep === 2" class="gj-step-content">
+            <div class="gj-two-cols">
+              <div class="gj-col gj-col-good">
+                <div class="gj-col-header">
+                  <span class="gj-col-icon">✅</span>
+                  <span class="gj-col-title">{{ t.step3good }}</span>
+                </div>
+                <textarea
+                  v-model="answers.wentWell"
+                  class="gj-textarea gj-textarea-sm"
+                  :placeholder="t.step3goodph"
+                  rows="4"
+                ></textarea>
+              </div>
+              <div class="gj-col gj-col-improve">
+                <div class="gj-col-header">
+                  <span class="gj-col-icon">🔧</span>
+                  <span class="gj-col-title">{{ t.step3improve }}</span>
+                </div>
+                <textarea
+                  v-model="answers.improve"
+                  class="gj-textarea gj-textarea-sm"
+                  :placeholder="t.step3improveph"
+                  rows="4"
+                ></textarea>
+              </div>
+            </div>
+            <div class="gj-actions">
+              <button class="gj-btn-back" @click="currentStep = 1">
+                {{ t.step3back }}
+              </button>
+              <button
+                class="gj-btn-next"
+                :disabled="
+                  answers.wentWell.trim().length < 3 &&
+                  answers.improve.trim().length < 3
+                "
+                @click="currentStep = 3"
+              >
+                {{ t.nextBtn }}
+              </button>
+            </div>
+          </div>
+
+          <div v-else-if="currentStep === 3" class="gj-step-content">
+            <div class="gj-field-wrap" :class="{ 'caly-waiting': calyWaiting && !answers.insight }">
+              <Transition name="gj-fade">
+                <div v-if="calyWaiting && !answers.insight" class="gj-caly-badge">
+                  💬 Caly is waiting for your answer...
+                </div>
+              </Transition>
+              <textarea
+                ref="insightTextareaRef"
+                v-model="answers.insight"
+                class="gj-textarea"
+                :placeholder="calyWaiting ? t.calyWaitingPh : t.step4ph"
+                rows="6"
+              ></textarea>
+            </div>
+            <button
+              class="gj-ai-btn"
+              @click="fetchAiSuggestion"
+              :disabled="aiLoading"
+            >
+              <span class="gj-ai-icon" :class="{ spinning: aiLoading }">
+                {{ aiLoading ? '⟳' : '💬' }}
               </span>
+              {{ aiLoading ? t.aiLoading : t.aiBtn }}
+            </button>
+            <Transition name="gj-fade">
+              <div v-if="aiSuggestion" class="gj-ai-suggestion">
+                <div class="gj-ai-suggestion-header">
+                  <span>{{ t.aiHeader }}</span>
+                  <button class="gj-ai-close" @click="dismissCaly">&times;</button>
+                </div>
+                <p class="gj-ai-suggestion-text">{{ aiSuggestion }}</p>
+                <button class="gj-ai-use-btn" @click="respondToCaly">
+                  {{ t.aiUsebtn }} ↩
+                </button>
+              </div>
+            </Transition>
+            <div class="gj-actions">
+              <button class="gj-btn-back" @click="currentStep = 2">
+                {{ t.step4back }}
+              </button>
+              <button
+                class="gj-btn-next"
+                :disabled="answers.insight.trim().length < 5"
+                @click="currentStep = 4"
+              >
+                {{ t.nextBtn }}
+              </button>
             </div>
           </div>
-          <div
-            class="gj-summary-two-col"
-            v-if="answers.wentWell || answers.improve"
-          >
-            <div class="gj-summary-mini" v-if="answers.wentWell">
-              <div class="gj-summary-section-label">{{ t.sum3good }}</div>
-              <div class="gj-summary-section-text">{{ answers.wentWell }}</div>
+
+          <div v-else-if="currentStep === 4" class="gj-step-content">
+            <div class="gj-commitment-wrap">
+              <span class="gj-commitment-prefix">{{ t.step5prefix }}</span>
+              <textarea
+                v-model="answers.action"
+                class="gj-textarea gj-textarea-commitment"
+                :placeholder="t.step5ph"
+                rows="4"
+              ></textarea>
             </div>
-            <div class="gj-summary-mini" v-if="answers.improve">
-              <div class="gj-summary-section-label">{{ t.sum3improve }}</div>
-              <div class="gj-summary-section-text">{{ answers.improve }}</div>
+            <div class="gj-checklist" v-if="answers.action.trim().length > 0">
+              <div class="gj-checklist-item">
+                <input
+                  type="checkbox"
+                  v-model="actionCommitted"
+                  id="commit-check"
+                  class="gj-check-input"
+                />
+                <label for="commit-check" class="gj-check-label">
+                  {{ t.step5commit }}
+                </label>
+              </div>
+            </div>
+            <div class="gj-actions">
+              <button class="gj-btn-back" @click="currentStep = 3">
+                {{ t.step5back }}
+              </button>
+              <button
+                class="gj-btn-next gj-btn-finish"
+                :disabled="answers.action.trim().length < 5"
+                @click="finishReflection"
+              >
+                {{ t.step5finish }}
+              </button>
             </div>
           </div>
-          <div class="gj-summary-section" v-if="answers.insight">
-            <div class="gj-summary-section-label">{{ t.sum4label }}</div>
-            <div class="gj-summary-section-text">{{ answers.insight }}</div>
-          </div>
-          <div class="gj-summary-action-box" v-if="answers.action">
-            <div class="gj-summary-action-label">{{ t.sum5label }}</div>
-            <div class="gj-summary-action-text">
-              {{ t.sum5prefix }} {{ answers.action }}
+
+          <div v-else class="gj-summary-content">
+            <div class="gj-summary-body">
+              <div class="gj-summary-section" v-if="answers.trigger">
+                <div class="gj-summary-section-label">{{ t.sum1label }}</div>
+                <div class="gj-summary-section-text">{{ answers.trigger }}</div>
+              </div>
+              <div class="gj-summary-section" v-if="answers.mood">
+                <div class="gj-summary-section-label">{{ t.sum2label }}</div>
+                <div class="gj-summary-section-text">
+                  <img v-if="answers.moodImg" :src="answers.moodImg" :alt="answers.mood" width="32" height="32" style="vertical-align:middle;margin-right:6px;" />
+                  {{ answers.mood }}
+                </div>
+                <div v-if="answers.moodNote" class="gj-summary-note">
+                  {{ answers.moodNote }}
+                </div>
+              </div>
+              <div
+                class="gj-summary-two-col"
+                v-if="answers.wentWell || answers.improve"
+              >
+                <div class="gj-summary-mini" v-if="answers.wentWell">
+                  <div class="gj-summary-section-label">{{ t.sum3good }}</div>
+                  <div class="gj-summary-section-text">{{ answers.wentWell }}</div>
+                </div>
+                <div class="gj-summary-mini" v-if="answers.improve">
+                  <div class="gj-summary-section-label">{{ t.sum3improve }}</div>
+                  <div class="gj-summary-section-text">{{ answers.improve }}</div>
+                </div>
+              </div>
+              <div class="gj-summary-section" v-if="answers.insight">
+                <div class="gj-summary-section-label">{{ t.sum4label }}</div>
+                <div class="gj-summary-section-text">{{ answers.insight }}</div>
+              </div>
+              <div class="gj-summary-action-box" v-if="answers.action">
+                <div class="gj-summary-action-label">{{ t.sum5label }}</div>
+                <div class="gj-summary-action-text">
+                  {{ t.sum5prefix }} {{ answers.action }}
+                </div>
+                <div class="gj-summary-committed" v-if="actionCommitted">
+                  <span>{{ t.sumCommitted }}</span>
+                </div>
+              </div>
             </div>
-            <div class="gj-summary-committed" v-if="actionCommitted">
-              <span>{{ t.sumCommitted }}</span>
+            <div class="gj-summary-actions">
+              <button
+                class="gj-btn-save"
+                @click="saveReminder"
+                v-if="answers.action"
+              >
+                {{ t.sumSave }}
+              </button>
+              <button class="gj-btn-new" @click="startNew">
+                {{ t.sumNew }}
+              </button>
+              <button class="gj-btn-back-dash" @click="$emit('back')">
+                {{ t.sumBack }}
+              </button>
             </div>
+            <div class="gj-saved-toast" v-if="savedToast">{{ t.savedToast }}</div>
           </div>
         </div>
-
-        <div class="gj-summary-actions">
-          <button
-            class="gj-btn-save"
-            @click="saveReminder"
-            v-if="answers.action && actionCommitted"
-          >
-            {{ t.sumSave }}
-          </button>
-          <button class="gj-btn-new" @click="startNew">
-            {{ t.sumNew }}
-          </button>
-          <button class="gj-btn-back-dash" @click="$emit('back')">
-            {{ t.sumBack }}
-          </button>
-        </div>
-
-        <div class="gj-saved-toast" v-if="savedToast">{{ t.savedToast }}</div>
+        <div class="gj-page-number">{{ rightPageNumber }}</div>
       </div>
-    </Transition>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from "vue";
+import { ref, computed, nextTick } from "vue";
+import { authService } from "../services/auth.js";
+import { commitmentService } from "../services/commitment.js";
 
 const props = defineProps({
   isDark: Boolean,
@@ -356,13 +362,16 @@ const gjI18n = {
     step1tag: "Step 1 · The Trigger",
     step1q: "What's one thing you'd like to reflect on today?",
     step1hint: "Share any experience — it doesn't have to be perfect.",
+    step1note: "Write openly, just like a page in a journal.",
     step1ph:
       "Example: Today's class presentation didn't go as well as I hoped...",
     step1chars: (n) => `${n} characters`,
     step1back: "← Dashboard",
-    step2tag: "Step 2 · The Mood",
+    step2tag: "Step 2 · Mood Check",
     step2q: "How were you feeling when it happened?",
-    step2hint: "Pick one or more that best describe your feelings.",
+    step2hint: "Pick the mood that fits best, then add a short note.",
+    moodNoteLabel: "A little more about this mood",
+    moodNotePh: "Optional: how did this feeling show up for you?",
     step2selected: "You chose:",
     step2back: "← Back",
     step3tag: "Step 3 · The Evaluation",
@@ -378,11 +387,12 @@ const gjI18n = {
     step4tag: "Step 4 · The Insight",
     step4q: "Looking back, why do you think it happened?",
     step4hint: "Dig deeper — look for root causes, not just symptoms.",
-    step4ph: "Write your thoughts here, or click 'AI Suggestion' for help...",
-    aiLoading: "Loading suggestion...",
-    aiBtn: "AI Suggestion",
-    aiHeader: "💬 AI questions to help you reflect:",
-    aiUsebtn: "Use as a guide",
+    step4ph: "Write your thoughts here, or ask Caly for help...",
+    calyWaitingPh: "Caly is waiting for your answer... write it here 💬",
+    aiLoading: "Caly is thinking...",
+    aiBtn: "Ask Caly",
+    aiHeader: "💬 Caly has a question for you:",
+    aiUsebtn: "Answer Caly",
     step4back: "← Back",
     step5tag: "Step 5 · The Action Plan",
     step5q: "So, what's one small thing you'll do differently tomorrow?",
@@ -393,6 +403,7 @@ const gjI18n = {
     step5commit: "I'm committed to doing this tomorrow! 💪",
     step5back: "← Back",
     step5finish: "Finish Reflection 🎉",
+    nextBtn: "Lanjut",
     sumTitle: "Reflection Complete!",
     sumSub: "You're one step further today. Be proud of yourself! 🙌",
     sum1label: "🌱 What was reflected",
@@ -416,26 +427,31 @@ Provide some guiding questions to help me explore why this happened.`,
     aiError:
       "Did you feel underprepared, or were there external factors beyond your control? What would you do differently if you faced this situation again?",
     moodOptions: [
-      { emoji: "😊", label: "Happy", color: "#f5a623" },
-      { emoji: "😔", label: "Sad", color: "#7c6ca8" },
-      { emoji: "😰", label: "Anxious", color: "#e67e22" },
-      { emoji: "😤", label: "Angry", color: "#e74c3c" },
-      { emoji: "😕", label: "Confused", color: "#3498db" },
-      { emoji: "🤩", label: "Proud", color: "#f39c12" },
-      { emoji: "😌", label: "Calm", color: "#6ab04c" },
-      { emoji: "😴", label: "Tired", color: "#95a5a6" },
+      { img: "/happy.png", label: "Happy", color: "#f5a623" },
+      { img: "/sad.png", label: "Sad", color: "#7c6ca8" },
+      { img: "/anxious.png", label: "Anxious", color: "#e67e22" },
+      { img: "/frustrated.png", label: "Angry", color: "#e74c3c" },
+      { img: "/confused.png", label: "Confused", color: "#3498db" },
+      { img: "/excited.png", label: "Proud", color: "#f39c12" },
+      { img: "/calm.png", label: "Calm", color: "#6ab04c" },
+      { img: "/tired.png", label: "Tired", color: "#95a5a6" },
+      { img: "/so-so.png", label: "So-so", color: "#b0b0b0" },
+      { img: "/touched.png", label: "Touched", color: "#a78bfa" },
     ],
   },
   id: {
     step1tag: "Langkah 1 · The Trigger",
     step1q: "Apa satu hal yang ingin kamu refleksikan hari ini?",
     step1hint: "Tuangkan kejadian apa saja — tidak harus sempurna.",
+    step1note: "Tulis bebas, seperti halaman jurnalmu sendiri.",
     step1ph: "Contoh: Hari ini presentasi di kelas terasa kurang maksimal...",
     step1chars: (n) => `${n} karakter`,
     step1back: "← Dashboard",
-    step2tag: "Langkah 2 · The Mood",
+    step2tag: "Langkah 2 · Mood Check",
     step2q: "Gimana perasaanmu pas kejadian itu?",
-    step2hint: "Pilih satu atau lebih yang paling menggambarkan perasaanmu.",
+    step2hint: "Pilih mood yang paling cocok, lalu tambahkan catatan singkat.",
+    moodNoteLabel: "Tambahkan sedikit tentang perasaan ini",
+    moodNotePh: "Opsional: bagaimana perasaan ini muncul untukmu?",
     step2selected: "Kamu memilih:",
     step2back: "← Kembali",
     step3tag: "Langkah 3 · The Evaluation",
@@ -451,11 +467,12 @@ Provide some guiding questions to help me explore why this happened.`,
     step4q: "Kalau dipikir lagi, kenapa hal itu bisa terjadi?",
     step4hint:
       "Gali lebih dalam — cari akar penyebabnya, bukan cuma gejalanya.",
-    step4ph: "Tulis pikiranmu di sini, atau klik 'Saran AI' untuk bantuan...",
-    aiLoading: "Memuat saran...",
-    aiBtn: "Saran AI",
-    aiHeader: "💬 Pertanyaan dari AI untuk membantumu berefleksi:",
-    aiUsebtn: "Gunakan sebagai panduan",
+    step4ph: "Tulis pikiranmu di sini, atau tanya Caly untuk bantuan...",
+    calyWaitingPh: "Caly sedang menunggu jawabanmu... tulis di sini 💬",
+    aiLoading: "Caly sedang berpikir...",
+    aiBtn: "Tanya Caly",
+    aiHeader: "💬 Caly punya pertanyaan untukmu:",
+    aiUsebtn: "Tanggapi Caly",
     step4back: "← Kembali",
     step5tag: "Langkah 5 · The Action Plan",
     step5q: "Jadi, apa satu hal kecil yang akan kamu lakukan berbeda besok?",
@@ -467,6 +484,7 @@ Provide some guiding questions to help me explore why this happened.`,
     step5commit: "Aku berkomitmen untuk melakukan ini besok! 💪",
     step5back: "← Kembali",
     step5finish: "Selesaikan Refleksi 🎉",
+    nextBtn: "Lanjut",
     sumTitle: "Refleksi Selesai!",
     sumSub:
       "Kamu sudah selangkah lebih maju hari ini. Bangga dengan dirimu sendiri! 🙌",
@@ -491,14 +509,16 @@ Berikan beberapa pertanyaan pemandu untuk membantu aku menggali kenapa hal ini b
     aiError:
       "Apakah kamu merasa kurang persiapan, atau ada faktor eksternal di luar kendalimu? Apa yang akan kamu lakukan berbeda jika menghadapi situasi ini lagi?",
     moodOptions: [
-      { emoji: "😊", label: "Senang", color: "#f5a623" },
-      { emoji: "😔", label: "Sedih", color: "#7c6ca8" },
-      { emoji: "😰", label: "Cemas", color: "#e67e22" },
-      { emoji: "😤", label: "Marah", color: "#e74c3c" },
-      { emoji: "😕", label: "Bingung", color: "#3498db" },
-      { emoji: "🤩", label: "Bangga", color: "#f39c12" },
-      { emoji: "😌", label: "Tenang", color: "#6ab04c" },
-      { emoji: "😴", label: "Lelah", color: "#95a5a6" },
+      { img: "/happy.png", label: "Senang", color: "#f5a623" },
+      { img: "/calm.png", label: "Tenang", color: "#6ab04c" },
+      { img: "/excited.png", label: "Bersemangat", color: "#f39c12" },
+      { img: "/sad.png", label: "Sedih", color: "#7c6ca8" },
+      { img: "/anxious.png", label: "Cemas", color: "#e67e22" },
+      { img: "/frustrated.png", label: "Frustrasi", color: "#e74c3c" },
+      { img: "/confused.png", label: "Bingung", color: "#3498db" },
+      { img: "/tired.png", label: "Lelah", color: "#95a5a6" },
+      { img: "/so-so.png", label: "Biasa saja", color: "#b0b0b0" },
+      { img: "/touched.png", label: "Tersentuh", color: "#a78bfa" },
     ],
   },
 };
@@ -510,12 +530,14 @@ const emit = defineEmits(["back", "done"]);
 const currentStep = ref(0);
 const aiLoading = ref(false);
 const aiSuggestion = ref("");
+const calyWaiting = ref(false);
+const insightTextareaRef = ref(null);
 const actionCommitted = ref(false);
 const savedToast = ref(false);
 
 const steps = [
   { title: "The Trigger" },
-  { title: "The Mood" },
+  { title: "Mood Check" },
   { title: "The Evaluation" },
   { title: "The Insight" },
   { title: "The Action Plan" },
@@ -524,25 +546,35 @@ const steps = [
 
 const answers = ref({
   trigger: props.initialTrigger || "",
-  moods: [],
+  mood: "",
+  moodImg: "",
+  moodNote: "",
   wentWell: "",
   improve: "",
   insight: "",
   action: "",
 });
 
-// moodOptions now in computed t above
-
 const progressPct = computed(
   () => (currentStep.value / (steps.length - 1)) * 100,
 );
 
-function toggleMood(label) {
-  const idx = answers.value.moods.indexOf(label);
-  if (idx === -1) {
-    answers.value.moods.push(label);
+const pageNumber = computed(() => currentStep.value + 1);
+const leftPageNumber = computed(() =>
+  currentStep.value === 0 ? "i" : pageNumber.value,
+);
+const rightPageNumber = computed(() =>
+  currentStep.value === 0 ? "1" : pageNumber.value,
+);
+
+function selectMood(label) {
+  const option = moodOptions.value.find((m) => m.label === label);
+  if (answers.value.mood === label) {
+    answers.value.mood = "";
+    answers.value.moodImg = "";
   } else {
-    answers.value.moods.splice(idx, 1);
+    answers.value.mood = label;
+    answers.value.moodImg = option?.img || "";
   }
 }
 
@@ -550,12 +582,14 @@ async function fetchAiSuggestion() {
   aiLoading.value = true;
   aiSuggestion.value = "";
   try {
-    const context = `
-Trigger: ${answers.value.trigger}
-Mood: ${answers.value.moods.join(", ")}
-Went well: ${answers.value.wentWell}
-Needs improvement: ${answers.value.improve}
-    `.trim();
+    const context = [
+      answers.value.trigger && `Trigger: ${answers.value.trigger}`,
+      answers.value.mood && `Mood: ${answers.value.mood}`,
+      answers.value.wentWell && `Went well: ${answers.value.wentWell}`,
+      answers.value.improve && `Needs improvement: ${answers.value.improve}`,
+    ]
+      .filter(Boolean)
+      .join("\n");
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -582,12 +616,68 @@ Needs improvement: ${answers.value.improve}
   }
 }
 
-function finishReflection() {
-  currentStep.value = 5;
-  emit("done", { ...answers.value });
+function respondToCaly() {
+  calyWaiting.value = true;
+  aiSuggestion.value = "";
+  nextTick(() => { insightTextareaRef.value?.focus(); });
 }
 
-function saveReminder() {
+function dismissCaly() {
+  aiSuggestion.value = "";
+  calyWaiting.value = false;
+}
+
+async function finishReflection() {
+  currentStep.value = 5;
+  // Save committed action as tomorrow's reminder in localStorage
+  if (actionCommitted.value && answers.value.action.trim()) {
+    const today = new Date();
+    const todayKey = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+    const reminderData = {
+      date: todayKey,
+      action: answers.value.action.trim(),
+      moodImg: answers.value.moodImg || '',
+      mood: answers.value.mood || '',
+    };
+    // Save to localStorage (fallback)
+    localStorage.setItem('innerly_reminder', JSON.stringify(reminderData));
+    // Save to DB
+    try {
+      const user = authService.getUser && authService.getUser();
+      if (user && user.id) {
+        const saved = await commitmentService.saveCommitment(user.id, reminderData);
+        // Store DB id for later mark-done
+        localStorage.setItem('innerly_reminder', JSON.stringify({ ...reminderData, dbId: saved.id }));
+      }
+    } catch (e) {
+      console.warn('Could not save commitment to DB:', e);
+    }
+  }
+  emit("done", { ...answers.value, committed: actionCommitted.value });
+}
+
+async function saveReminder() {
+  actionCommitted.value = true;
+  if (answers.value.action) {
+    const today = new Date();
+    const todayKey = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+    const reminderData = {
+      date: todayKey,
+      action: answers.value.action.trim(),
+      moodImg: answers.value.moodImg || '',
+      mood: answers.value.mood || '',
+    };
+    localStorage.setItem('innerly_reminder', JSON.stringify(reminderData));
+    try {
+      const user = authService.getUser && authService.getUser();
+      if (user && user.id) {
+        const saved = await commitmentService.saveCommitment(user.id, reminderData);
+        localStorage.setItem('innerly_reminder', JSON.stringify({ ...reminderData, dbId: saved.id }));
+      }
+    } catch (e) {
+      console.warn('Could not save commitment to DB:', e);
+    }
+  }
   savedToast.value = true;
   setTimeout(() => (savedToast.value = false), 3500);
 }
@@ -595,7 +685,9 @@ function saveReminder() {
 function startNew() {
   answers.value = {
     trigger: "",
-    moods: [],
+    mood: "",
+    moodEmoji: "",
+    moodNote: "",
     wentWell: "",
     improve: "",
     insight: "",
@@ -626,6 +718,28 @@ function getConfettiStyle(i) {
 </script>
 
 <style scoped>
+/* ── Color tokens (match AuthModal palette) ── */
+/* Light */
+/* bg-card:      #faf8ff  */
+/* bg-surface:   rgba(255,255,255,0.7) */
+/* border:       rgba(160,120,250,0.15) */
+/* accent:       #5b4a9a  (gradient end #9333ea) */
+/* accent-soft:  rgba(124,108,168,0.08) */
+/* accent-glow:  rgba(124,108,168,0.12) */
+/* text-primary: #2d1f6e  */
+/* text-muted:   rgba(80,60,140,0.6) */
+/* shadow-md:    0 24px 72px rgba(80,40,180,0.22), 0 2px 10px rgba(80,40,180,0.08) */
+
+/* Dark */
+/* bg-card:      #0f0b1e  */
+/* bg-surface:   rgba(30,20,50,0.7) */
+/* border:       rgba(167,139,250,0.18) */
+/* accent:       #a78bfa */
+/* accent-soft:  rgba(167,139,250,0.1) */
+/* accent-glow:  rgba(167,139,250,0.12) */
+/* text-primary: #ede8ff  */
+/* text-muted:   rgba(180,160,255,0.55) */
+
 /* ── Wrapper ── */
 .gj-wrap {
   width: 100%;
@@ -640,16 +754,22 @@ function getConfettiStyle(i) {
 /* ── Progress ── */
 .gj-progress-bar {
   height: 4px;
-  background: var(--border);
+  background: rgba(160, 120, 250, 0.15);
   border-radius: 4px;
   overflow: hidden;
   margin-top: 4px;
 }
+.gj-wrap.is-dark .gj-progress-bar {
+  background: rgba(167, 139, 250, 0.18);
+}
 .gj-progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--accent) 0%, #c084fc 100%);
+  background: linear-gradient(90deg, #5b4a9a 0%, #9333ea 100%);
   border-radius: 4px;
   transition: width 0.5s cubic-bezier(0.34, 1.2, 0.64, 1);
+}
+.gj-wrap.is-dark .gj-progress-fill {
+  background: linear-gradient(90deg, #a78bfa 0%, #c084fc 100%);
 }
 
 /* ── Step dots ── */
@@ -663,34 +783,54 @@ function getConfettiStyle(i) {
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  border: 2px solid var(--border);
-  background: var(--bg-card);
+  border: 2px solid rgba(160, 120, 250, 0.2);
+  background: #faf8ff;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 0.72rem;
   font-weight: 600;
-  color: var(--text-muted);
+  font-family: "Outfit", sans-serif;
+  color: rgba(80, 60, 140, 0.5);
   transition: all 0.3s ease;
   cursor: default;
   user-select: none;
 }
+.gj-wrap.is-dark .gj-step-dot {
+  background: #0f0b1e;
+  border-color: rgba(167, 139, 250, 0.2);
+  color: rgba(180, 160, 255, 0.4);
+}
 .gj-step-dot.done {
-  background: var(--accent-soft);
-  border-color: var(--accent);
-  color: var(--accent);
+  background: rgba(124, 108, 168, 0.08);
+  border-color: #5b4a9a;
+  color: #5b4a9a;
   cursor: pointer;
 }
+.gj-wrap.is-dark .gj-step-dot.done {
+  background: rgba(167, 139, 250, 0.1);
+  border-color: #a78bfa;
+  color: #a78bfa;
+}
 .gj-step-dot.done:hover {
-  background: var(--accent);
+  background: #5b4a9a;
+  color: white;
+}
+.gj-wrap.is-dark .gj-step-dot.done:hover {
+  background: #a78bfa;
   color: white;
 }
 .gj-step-dot.active {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: linear-gradient(135deg, #5b4a9a 0%, #9333ea 100%);
+  border-color: #5b4a9a;
   color: white;
-  box-shadow: 0 0 0 4px var(--accent-glow);
+  box-shadow: 0 0 0 4px rgba(124, 108, 168, 0.18);
   transform: scale(1.15);
+}
+.gj-wrap.is-dark .gj-step-dot.active {
+  background: linear-gradient(135deg, #a78bfa 0%, #c084fc 100%);
+  border-color: #a78bfa;
+  box-shadow: 0 0 0 4px rgba(167, 139, 250, 0.18);
 }
 .gj-dot-check {
   font-size: 0.75rem;
@@ -698,16 +838,25 @@ function getConfettiStyle(i) {
 
 /* ── Card ── */
 .gj-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 20px;
+  background: #faf8ff;
+  border: 1px solid rgba(160, 120, 250, 0.15);
+  border-radius: 24px;
   padding: 32px 36px;
   display: flex;
   flex-direction: column;
   gap: 16px;
-  box-shadow: var(--shadow-md);
+  box-shadow:
+    0 24px 72px rgba(80, 40, 180, 0.22),
+    0 2px 10px rgba(80, 40, 180, 0.08);
   position: relative;
   overflow: hidden;
+}
+.gj-wrap.is-dark .gj-card {
+  background: #0f0b1e;
+  border-color: rgba(167, 139, 250, 0.18);
+  box-shadow:
+    0 24px 72px rgba(40, 20, 100, 0.4),
+    0 2px 10px rgba(40, 20, 100, 0.2);
 }
 
 /* ── Card header ── */
@@ -718,14 +867,20 @@ function getConfettiStyle(i) {
 }
 .gj-layer-tag {
   font-size: 0.72rem;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--accent);
-  background: var(--accent-soft);
+  font-family: "Outfit", sans-serif;
+  color: #5b4a9a;
+  background: rgba(124, 108, 168, 0.08);
   padding: 4px 10px;
   border-radius: 20px;
-  border: 1px solid var(--border);
+  border: 1px solid rgba(160, 120, 250, 0.2);
+}
+.gj-wrap.is-dark .gj-layer-tag {
+  color: #c4b5fd;
+  background: rgba(167, 139, 250, 0.1);
+  border-color: rgba(167, 139, 250, 0.2);
 }
 .gj-layer-emoji {
   font-size: 1.6rem;
@@ -733,28 +888,37 @@ function getConfettiStyle(i) {
 
 /* ── Question & hint ── */
 .gj-question {
-  font-family: var(--font-heading);
+  font-family: "Playfair Display", Georgia, serif;
   font-size: 1.4rem;
-  color: var(--text-primary);
+  color: #2d1f6e;
   line-height: 1.35;
   margin: 0;
+  font-weight: 700;
+}
+.gj-wrap.is-dark .gj-question {
+  color: #e8d8ff;
 }
 .gj-hint {
   font-size: 0.82rem;
-  color: var(--text-muted);
+  font-family: "Outfit", sans-serif;
+  color: rgba(80, 60, 140, 0.6);
   margin: 0;
+  line-height: 1.5;
+}
+.gj-wrap.is-dark .gj-hint {
+  color: rgba(180, 160, 255, 0.55);
 }
 
 /* ── Textarea ── */
 .gj-textarea {
   width: 100%;
-  background: var(--bg-surface);
-  border: 1.5px solid var(--border);
+  background: rgba(255, 255, 255, 0.7);
+  border: 1.5px solid rgba(124, 108, 168, 0.2);
   border-radius: 12px;
   padding: 14px 16px;
-  font-family: var(--font-body);
+  font-family: "Outfit", sans-serif;
   font-size: 0.9rem;
-  color: var(--text-primary);
+  color: #2d1f6e;
   resize: vertical;
   outline: none;
   transition:
@@ -762,31 +926,51 @@ function getConfettiStyle(i) {
     box-shadow 0.2s;
   line-height: 1.7;
   min-height: 100px;
+  box-sizing: border-box;
+}
+.gj-wrap.is-dark .gj-textarea {
+  background: rgba(30, 20, 50, 0.7);
+  border-color: rgba(167, 139, 250, 0.2);
+  color: #e8d8ff;
 }
 .gj-textarea:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-glow);
+  border-color: #7c6ca8;
+  box-shadow: 0 0 0 3px rgba(124, 108, 168, 0.12);
+}
+.gj-wrap.is-dark .gj-textarea:focus {
+  border-color: #a78bfa;
+  box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.12);
 }
 .gj-textarea::placeholder {
-  color: var(--text-muted);
+  color: rgba(100, 80, 160, 0.35);
   font-style: italic;
+}
+.gj-wrap.is-dark .gj-textarea::placeholder {
+  color: rgba(167, 139, 250, 0.35);
 }
 .gj-textarea-sm {
   min-height: 80px;
   font-size: 0.85rem;
 }
 .gj-textarea-commitment {
-  border-left: 3px solid var(--accent);
+  border-left: 3px solid #7c6ca8;
   border-radius: 0 12px 12px 0;
   min-height: 70px;
   font-style: italic;
 }
+.gj-wrap.is-dark .gj-textarea-commitment {
+  border-left-color: #a78bfa;
+}
 
 .gj-char-count {
   font-size: 0.7rem;
-  color: var(--text-muted);
+  color: rgba(80, 60, 140, 0.6);
+  font-family: "Outfit", sans-serif;
   text-align: right;
   margin-top: -8px;
+}
+.gj-wrap.is-dark .gj-char-count {
+  color: rgba(180, 160, 255, 0.55);
 }
 
 /* ── Mood grid ── */
@@ -802,22 +986,27 @@ function getConfettiStyle(i) {
   gap: 6px;
   padding: 14px 8px;
   border-radius: 14px;
-  border: 2px solid var(--border);
-  background: var(--bg-surface);
+  border: 2px solid rgba(124, 108, 168, 0.2);
+  background: rgba(255, 255, 255, 0.7);
   cursor: pointer;
   transition: all 0.2s ease;
 }
+.gj-wrap.is-dark .gj-mood-btn {
+  border-color: rgba(167, 139, 250, 0.2);
+  background: rgba(30, 20, 50, 0.7);
+}
 .gj-mood-btn:hover {
-  border-color: var(--mc, var(--accent));
+  border-color: var(--mc, #7c6ca8);
   transform: translateY(-2px);
-  box-shadow: 0 4px 14px
-    color-mix(in srgb, var(--mc, var(--accent)) 25%, transparent);
+  box-shadow: 0 4px 14px rgba(124, 108, 168, 0.18);
 }
 .gj-mood-btn.selected {
-  background: color-mix(in srgb, var(--mc, var(--accent)) 12%, var(--bg-card));
-  border-color: var(--mc, var(--accent));
-  box-shadow: 0 2px 10px
-    color-mix(in srgb, var(--mc, var(--accent)) 20%, transparent);
+  background: rgba(124, 108, 168, 0.1);
+  border-color: var(--mc, #7c6ca8);
+  box-shadow: 0 2px 10px rgba(124, 108, 168, 0.15);
+}
+.gj-wrap.is-dark .gj-mood-btn.selected {
+  background: rgba(167, 139, 250, 0.1);
 }
 .gj-mood-emoji {
   font-size: 1.6rem;
@@ -826,7 +1015,11 @@ function getConfettiStyle(i) {
 .gj-mood-label {
   font-size: 0.72rem;
   font-weight: 600;
-  color: var(--text-secondary);
+  font-family: "Outfit", sans-serif;
+  color: rgba(80, 60, 140, 0.65);
+}
+.gj-wrap.is-dark .gj-mood-label {
+  color: rgba(180, 160, 255, 0.6);
 }
 .gj-mood-selected {
   display: flex;
@@ -837,22 +1030,32 @@ function getConfettiStyle(i) {
 }
 .gj-mood-selected-label {
   font-size: 0.75rem;
-  color: var(--text-muted);
+  font-family: "Outfit", sans-serif;
+  color: rgba(80, 60, 140, 0.6);
+}
+.gj-wrap.is-dark .gj-mood-selected-label {
+  color: rgba(180, 160, 255, 0.55);
 }
 .gj-mood-tag {
   font-size: 0.75rem;
   font-weight: 600;
-  background: var(--accent-soft);
-  color: var(--accent);
-  border: 1px solid var(--border);
+  font-family: "Outfit", sans-serif;
+  background: rgba(124, 108, 168, 0.08);
+  color: #5b4a9a;
+  border: 1px solid rgba(160, 120, 250, 0.2);
   padding: 3px 10px;
   border-radius: 20px;
+}
+.gj-wrap.is-dark .gj-mood-tag {
+  background: rgba(167, 139, 250, 0.1);
+  color: #c4b5fd;
+  border-color: rgba(167, 139, 250, 0.2);
 }
 
 /* ── Two columns (evaluation) ── */
 .gj-two-cols {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;  
   gap: 16px;
 }
 .gj-col {
@@ -871,13 +1074,56 @@ function getConfettiStyle(i) {
 .gj-col-title {
   font-size: 0.8rem;
   font-weight: 600;
-  color: var(--text-secondary);
+  font-family: "Outfit", sans-serif;
+  color: rgba(80, 60, 140, 0.65);
+}
+.gj-wrap.is-dark .gj-col-title {
+  color: rgba(180, 160, 255, 0.6);
 }
 .gj-col-good .gj-textarea-sm {
   border-left: 3px solid #6ab04c;
 }
 .gj-col-improve .gj-textarea-sm {
   border-left: 3px solid #e67e22;
+}
+
+/* ── Caly field wrap ── */
+.gj-field-wrap {
+  position: relative;
+  border: 1.5px solid rgba(91, 142, 230, 0.25);
+  border-radius: 12px;
+  padding: 4px 8px 4px;
+  background: rgba(255,255,255,0.6);
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+.gj-field-wrap:focus-within {
+  border-color: rgba(91, 142, 230, 0.5);
+  box-shadow: 0 4px 18px rgba(91, 142, 230, 0.14);
+}
+.gj-field-wrap.caly-waiting {
+  border-color: rgba(167, 139, 250, 0.5);
+  box-shadow: 0 4px 20px rgba(167, 139, 250, 0.18);
+  animation: gjCalyPulse 2s ease-in-out infinite;
+}
+@keyframes gjCalyPulse {
+  0%, 100% { box-shadow: 0 4px 20px rgba(167, 139, 250, 0.18); }
+  50% { box-shadow: 0 4px 26px rgba(167, 139, 250, 0.32); }
+}
+.gj-field-wrap .gj-textarea {
+  border: none !important;
+  box-shadow: none !important;
+  padding: 6px 4px;
+}
+.gj-caly-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #7c3aed;
+  padding: 4px 2px 0;
+  opacity: 0.85;
+}
+.gj-wrap.is-dark .gj-field-wrap {
+  background: rgba(255,255,255,0.04);
+  border-color: rgba(120,160,240,0.14);
 }
 
 /* ── AI button & suggestion ── */
@@ -887,20 +1133,31 @@ function getConfettiStyle(i) {
   gap: 7px;
   padding: 9px 18px;
   border-radius: 50px;
-  background: var(--accent-soft);
-  border: 1.5px solid var(--accent);
-  color: var(--accent);
+  background: rgba(124, 108, 168, 0.08);
+  border: 1.5px solid #7c6ca8;
+  color: #5b4a9a;
   font-size: 0.82rem;
   font-weight: 600;
+  font-family: "Outfit", sans-serif;
   cursor: pointer;
   transition: all 0.2s;
   width: fit-content;
 }
+.gj-wrap.is-dark .gj-ai-btn {
+  background: rgba(167, 139, 250, 0.1);
+  border-color: #a78bfa;
+  color: #c4b5fd;
+}
 .gj-ai-btn:hover:not(:disabled) {
-  background: var(--accent);
+  background: linear-gradient(135deg, #5b4a9a 0%, #9333ea 100%);
+  border-color: #5b4a9a;
   color: white;
   transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 6px 22px rgba(147, 51, 234, 0.3);
+}
+.gj-wrap.is-dark .gj-ai-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #a78bfa 0%, #c084fc 100%);
+  border-color: #a78bfa;
 }
 .gj-ai-btn:disabled {
   opacity: 0.6;
@@ -919,42 +1176,65 @@ function getConfettiStyle(i) {
   }
 }
 .gj-ai-suggestion {
-  background: linear-gradient(135deg, var(--accent-soft), var(--bg-surface));
-  border: 1px solid var(--accent);
+  background: linear-gradient(135deg, rgba(124, 108, 168, 0.08), rgba(255, 255, 255, 0.7));
+  border: 1px solid rgba(124, 108, 168, 0.3);
   border-radius: 12px;
   padding: 16px 18px;
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
+.gj-wrap.is-dark .gj-ai-suggestion {
+  background: linear-gradient(135deg, rgba(167, 139, 250, 0.1), rgba(30, 20, 50, 0.7));
+  border-color: rgba(167, 139, 250, 0.25);
+}
 .gj-ai-suggestion-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--accent);
+  font-weight: 700;
+  font-family: "Outfit", sans-serif;
+  color: #5b4a9a;
+}
+.gj-wrap.is-dark .gj-ai-suggestion-header {
+  color: #c4b5fd;
 }
 .gj-ai-close {
-  background: none;
+  background: rgba(124, 108, 168, 0.1);
   border: none;
-  color: var(--text-muted);
+  color: rgba(80, 60, 140, 0.6);
   cursor: pointer;
   font-size: 1.2rem;
   line-height: 1;
-  padding: 0;
+  padding: 2px 6px;
+  border-radius: 50%;
+  transition: background 0.2s;
+}
+.gj-ai-close:hover {
+  background: rgba(124, 108, 168, 0.2);
+}
+.gj-wrap.is-dark .gj-ai-close {
+  color: #a78bfa;
+  background: rgba(167, 139, 250, 0.1);
 }
 .gj-ai-suggestion-text {
   font-size: 0.87rem;
-  color: var(--text-primary);
+  font-family: "Outfit", sans-serif;
+  color: #2d1f6e;
   line-height: 1.65;
   font-style: italic;
 }
+.gj-wrap.is-dark .gj-ai-suggestion-text {
+  color: #ede8ff;
+}
 .gj-ai-use-btn {
   font-size: 0.74rem;
-  color: var(--accent);
+  font-family: "Outfit", sans-serif;
+  font-weight: 600;
+  color: #5b4a9a;
   background: none;
-  border: 1px solid var(--accent);
+  border: 1px solid #7c6ca8;
   border-radius: 20px;
   padding: 5px 14px;
   cursor: pointer;
@@ -962,8 +1242,17 @@ function getConfettiStyle(i) {
   transition: all 0.2s;
 }
 .gj-ai-use-btn:hover {
-  background: var(--accent);
+  background: linear-gradient(135deg, #5b4a9a 0%, #9333ea 100%);
+  border-color: #5b4a9a;
   color: white;
+}
+.gj-wrap.is-dark .gj-ai-use-btn {
+  color: #c4b5fd;
+  border-color: #a78bfa;
+}
+.gj-wrap.is-dark .gj-ai-use-btn:hover {
+  background: linear-gradient(135deg, #a78bfa 0%, #c084fc 100%);
+  border-color: #a78bfa;
 }
 
 /* ── Commitment (action plan) ── */
@@ -973,11 +1262,14 @@ function getConfettiStyle(i) {
   gap: 8px;
 }
 .gj-commitment-prefix {
-  font-family: var(--font-heading);
+  font-family: "Playfair Display", Georgia, serif;
   font-size: 1.1rem;
   font-weight: 700;
-  color: var(--accent);
+  color: #5b4a9a;
   font-style: italic;
+}
+.gj-wrap.is-dark .gj-commitment-prefix {
+  color: #c4b5fd;
 }
 .gj-checklist {
   margin-top: 4px;
@@ -990,14 +1282,21 @@ function getConfettiStyle(i) {
 .gj-check-input {
   width: 18px;
   height: 18px;
-  accent-color: var(--accent);
+  accent-color: #5b4a9a;
   cursor: pointer;
+}
+.gj-wrap.is-dark .gj-check-input {
+  accent-color: #a78bfa;
 }
 .gj-check-label {
   font-size: 0.88rem;
-  color: var(--text-secondary);
+  font-family: "Outfit", sans-serif;
+  color: rgba(80, 60, 140, 0.65);
   cursor: pointer;
   font-weight: 500;
+}
+.gj-wrap.is-dark .gj-check-label {
+  color: rgba(180, 160, 255, 0.6);
 }
 
 /* ── Actions row ── */
@@ -1010,43 +1309,58 @@ function getConfettiStyle(i) {
 }
 .gj-btn-back {
   font-size: 0.82rem;
-  color: var(--text-muted);
+  font-family: "Outfit", sans-serif;
+  color: rgba(80, 60, 140, 0.5);
   background: none;
   border: none;
   cursor: pointer;
   padding: 8px 4px;
   transition: color 0.2s;
 }
+.gj-wrap.is-dark .gj-btn-back {
+  color: rgba(180, 160, 255, 0.4);
+}
 .gj-btn-back:hover {
-  color: var(--text-secondary);
+  color: rgba(80, 60, 140, 0.8);
+}
+.gj-wrap.is-dark .gj-btn-back:hover {
+  color: rgba(180, 160, 255, 0.7);
 }
 .gj-btn-next {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 11px 26px;
+  padding: 12px 26px;
   border-radius: 50px;
-  background: var(--accent);
+  background: linear-gradient(135deg, #5b4a9a 0%, #9333ea 100%);
   color: white;
   border: none;
-  font-weight: 600;
+  font-family: "Outfit", sans-serif;
+  font-weight: 700;
   font-size: 0.88rem;
   cursor: pointer;
   transition: all 0.2s;
-  box-shadow: 0 4px 14px var(--accent-glow);
+  box-shadow: 0 6px 22px rgba(147, 51, 234, 0.3);
+}
+.gj-wrap.is-dark .gj-btn-next {
+  background: linear-gradient(135deg, #a78bfa 0%, #c084fc 100%);
+  box-shadow: 0 6px 22px rgba(167, 139, 250, 0.3);
 }
 .gj-btn-next:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px var(--accent-glow);
-  filter: brightness(1.08);
+  box-shadow: 0 10px 28px rgba(147, 51, 234, 0.42);
+  filter: brightness(1.06);
 }
 .gj-btn-next:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
 .gj-btn-finish {
-  background: linear-gradient(135deg, var(--accent) 0%, #c084fc 100%);
+  background: linear-gradient(135deg, #5b4a9a 0%, #c084fc 100%);
   font-size: 0.9rem;
+}
+.gj-wrap.is-dark .gj-btn-finish {
+  background: linear-gradient(135deg, #a78bfa 0%, #e879f9 100%);
 }
 .gj-arrow {
   font-size: 1.1rem;
@@ -1104,14 +1418,22 @@ function getConfettiStyle(i) {
   }
 }
 .gj-summary-title {
-  font-family: var(--font-heading);
+  font-family: "Playfair Display", Georgia, serif;
   font-size: 1.9rem;
-  color: var(--text-primary);
+  font-weight: 700;
+  color: #2d1f6e;
+}
+.gj-wrap.is-dark .gj-summary-title {
+  color: #e8d8ff;
 }
 .gj-summary-sub {
   font-size: 0.9rem;
-  color: var(--text-secondary);
+  font-family: "Outfit", sans-serif;
+  color: rgba(80, 60, 140, 0.6);
   max-width: 380px;
+}
+.gj-wrap.is-dark .gj-summary-sub {
+  color: rgba(180, 160, 255, 0.55);
 }
 .gj-summary-body {
   display: flex;
@@ -1119,25 +1441,37 @@ function getConfettiStyle(i) {
   gap: 14px;
 }
 .gj-summary-section {
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(160, 120, 250, 0.15);
   border-radius: 12px;
   padding: 14px 18px;
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
+.gj-wrap.is-dark .gj-summary-section {
+  background: rgba(30, 20, 50, 0.7);
+  border-color: rgba(167, 139, 250, 0.18);
+}
 .gj-summary-section-label {
   font-size: 0.72rem;
   font-weight: 700;
+  font-family: "Outfit", sans-serif;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--accent);
+  color: #5b4a9a;
+}
+.gj-wrap.is-dark .gj-summary-section-label {
+  color: #a78bfa;
 }
 .gj-summary-section-text {
   font-size: 0.88rem;
-  color: var(--text-primary);
+  font-family: "Outfit", sans-serif;
+  color: #2d1f6e;
   line-height: 1.6;
+}
+.gj-wrap.is-dark .gj-summary-section-text {
+  color: #ede8ff;
 }
 .gj-summary-moods-row {
   display: flex;
@@ -1147,51 +1481,73 @@ function getConfettiStyle(i) {
 .gj-summary-mood-tag {
   font-size: 0.8rem;
   font-weight: 600;
-  background: var(--accent-soft);
-  color: var(--accent);
-  border: 1px solid var(--border);
+  font-family: "Outfit", sans-serif;
+  background: rgba(124, 108, 168, 0.08);
+  color: #5b4a9a;
+  border: 1px solid rgba(160, 120, 250, 0.2);
   padding: 4px 12px;
   border-radius: 20px;
 }
+.gj-wrap.is-dark .gj-summary-mood-tag {
+  background: rgba(167, 139, 250, 0.1);
+  color: #c4b5fd;
+  border-color: rgba(167, 139, 250, 0.2);
+}
 .gj-summary-two-col {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr; 
   gap: 12px;
 }
 .gj-summary-mini {
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(160, 120, 250, 0.15);
   border-radius: 12px;
   padding: 12px 14px;
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
+.gj-wrap.is-dark .gj-summary-mini {
+  background: rgba(30, 20, 50, 0.7);
+  border-color: rgba(167, 139, 250, 0.18);
+}
 .gj-summary-action-box {
-  background: linear-gradient(135deg, var(--accent-soft), var(--bg-surface));
-  border: 2px solid var(--accent);
+  background: linear-gradient(135deg, rgba(124, 108, 168, 0.08), rgba(255, 255, 255, 0.7));
+  border: 2px solid #7c6ca8;
   border-radius: 14px;
   padding: 18px 22px;
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
+.gj-wrap.is-dark .gj-summary-action-box {
+  background: linear-gradient(135deg, rgba(167, 139, 250, 0.1), rgba(30, 20, 50, 0.7));
+  border-color: #a78bfa;
+}
 .gj-summary-action-label {
   font-size: 0.72rem;
   font-weight: 700;
+  font-family: "Outfit", sans-serif;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--accent);
+  color: #5b4a9a;
+}
+.gj-wrap.is-dark .gj-summary-action-label {
+  color: #a78bfa;
 }
 .gj-summary-action-text {
-  font-family: var(--font-heading);
+  font-family: "Playfair Display", Georgia, serif;
   font-size: 1rem;
   font-style: italic;
-  color: var(--text-primary);
+  color: #2d1f6e;
   line-height: 1.5;
+}
+.gj-wrap.is-dark .gj-summary-action-text {
+  color: #e8d8ff;
 }
 .gj-summary-committed {
   font-size: 0.8rem;
+  font-family: "Outfit", sans-serif;
   font-weight: 600;
   color: #6ab04c;
 }
@@ -1206,41 +1562,55 @@ function getConfettiStyle(i) {
 .gj-btn-save {
   width: 100%;
   max-width: 320px;
-  padding: 12px 24px;
+  padding: 14px 24px;
   border-radius: 50px;
-  background: linear-gradient(135deg, var(--accent) 0%, #c084fc 100%);
+  background: linear-gradient(135deg, #5b4a9a 0%, #9333ea 100%);
   color: white;
   border: none;
-  font-weight: 600;
+  font-family: "Outfit", sans-serif;
+  font-weight: 700;
   font-size: 0.9rem;
   cursor: pointer;
-  transition: all 0.2s;
-  box-shadow: 0 4px 14px var(--accent-glow);
+  transition: all 0.22s ease;
+  box-shadow: 0 6px 22px rgba(147, 51, 234, 0.3);
 }
 .gj-btn-save:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px var(--accent-glow);
+  box-shadow: 0 10px 28px rgba(147, 51, 234, 0.42);
+  filter: brightness(1.06);
 }
 .gj-btn-new {
   width: 100%;
   max-width: 320px;
-  padding: 11px 24px;
+  padding: 12px 24px;
   border-radius: 50px;
-  background: var(--accent-soft);
-  border: 1.5px solid var(--accent);
-  color: var(--accent);
-  font-weight: 600;
+  background: rgba(124, 108, 168, 0.08);
+  border: 1.5px solid #7c6ca8;
+  color: #5b4a9a;
+  font-family: "Outfit", sans-serif;
+  font-weight: 700;
   font-size: 0.88rem;
   cursor: pointer;
   transition: all 0.2s;
 }
+.gj-wrap.is-dark .gj-btn-new {
+  background: rgba(167, 139, 250, 0.1);
+  border-color: #a78bfa;
+  color: #c4b5fd;
+}
 .gj-btn-new:hover {
-  background: var(--accent);
+  background: linear-gradient(135deg, #5b4a9a 0%, #9333ea 100%);
+  border-color: #5b4a9a;
   color: white;
+}
+.gj-wrap.is-dark .gj-btn-new:hover {
+  background: linear-gradient(135deg, #a78bfa 0%, #c084fc 100%);
+  border-color: #a78bfa;
 }
 .gj-btn-back-dash {
   font-size: 0.8rem;
-  color: var(--text-muted);
+  font-family: "Outfit", sans-serif;
+  color: rgba(80, 60, 140, 0.5);
   background: none;
   border: none;
   cursor: pointer;
@@ -1249,8 +1619,14 @@ function getConfettiStyle(i) {
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+.gj-wrap.is-dark .gj-btn-back-dash {
+  color: rgba(180, 160, 255, 0.4);
+}
 .gj-btn-back-dash:hover {
-  color: var(--text-secondary);
+  color: rgba(80, 60, 140, 0.8);
+}
+.gj-wrap.is-dark .gj-btn-back-dash:hover {
+  color: rgba(180, 160, 255, 0.7);
 }
 
 /* ── Toast ── */
@@ -1306,6 +1682,163 @@ function getConfettiStyle(i) {
   opacity: 0;
   transform: translateY(8px);
 }
+
+/* ── Book layout ── */
+.gj-book {
+  display: flex;
+  width: 100%;
+  max-width: 980px;
+  min-height: 560px;
+  gap: 14px;
+  margin: 0 auto;
+  padding: 14px;
+}
+.gj-spine {
+  width: 8px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(124, 108, 168, 0.4), rgba(94, 78, 152, 0.95));
+  box-shadow: inset 1px 0 3px rgba(255, 255, 255, 0.18), inset -1px 0 3px rgba(0, 0, 0, 0.08);
+}
+.gj-page {
+  position: relative;
+  flex: 1;
+  min-height: 560px;
+  overflow: hidden;
+  border-radius: 28px;
+  border: 1px solid rgba(160, 120, 250, 0.18);
+  background: linear-gradient(160deg, #fbf8ff 0%, #f7f1fb 56%, #f1ecf7 100%);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+}
+.gj-page-right {
+  background: linear-gradient(160deg, #fff 0%, #f9f5fe 56%, #f2edfb 100%);
+}
+.gj-wrap.is-dark .gj-page {
+  border-color: rgba(167, 139, 250, 0.18);
+  background: linear-gradient(160deg, #1b132a 0%, #1a132f 56%, #180f2a 100%);
+}
+.gj-wrap.is-dark .gj-page-right {
+  background: linear-gradient(160deg, #201738 0%, #1e1133 56%, #1b0e2b 100%);
+}
+.gj-page-lines {
+  position: absolute;
+  inset: 0;
+  padding: 32px 22px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  pointer-events: none;
+  z-index: 0;
+}
+.gj-line {
+  height: 1px;
+  background: rgba(160, 120, 250, 0.12);
+}
+.gj-wrap.is-dark .gj-line {
+  background: rgba(167, 139, 250, 0.16);
+}
+.gj-page-content {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  padding: 36px 32px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.gj-side-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.gj-page-title {
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: 1.8rem;
+  font-weight: 700;
+  line-height: 1.15;
+  margin: 0;
+  color: #2d1f6e;
+}
+.gj-wrap.is-dark .gj-page-title {
+  color: #efe5ff;
+}
+.gj-page-hint,
+.gj-page-note,
+.gj-page-selected {
+  font-family: "Outfit", sans-serif;
+  color: rgba(80, 60, 140, 0.65);
+  line-height: 1.6;
+  margin: 0;
+}
+.gj-wrap.is-dark .gj-page-hint,
+.gj-wrap.is-dark .gj-page-note,
+.gj-wrap.is-dark .gj-page-selected {
+  color: rgba(200, 180, 255, 0.75);
+}
+.gj-page-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+.gj-mood-emoji-large {
+  font-size: 2.4rem;
+}
+.gj-step-content {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.gj-note-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.gj-note-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  font-family: "Outfit", sans-serif;
+  color: rgba(80, 60, 140, 0.7);
+}
+.gj-wrap.is-dark .gj-note-label {
+  color: rgba(200, 180, 255, 0.74);
+}
+.gj-summary-content {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+.gj-summary-note {
+  margin-top: 8px;
+  font-size: 0.88rem;
+  color: rgba(80, 60, 140, 0.75);
+  font-style: italic;
+}
+.gj-wrap.is-dark .gj-summary-note {
+  color: rgba(200, 180, 255, 0.75);
+}
+.gj-page-number {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: "Outfit", sans-serif;
+  font-size: 0.76rem;
+  color: rgba(80, 60, 140, 0.5);
+}
+.gj-wrap.is-dark .gj-page-number {
+  color: rgba(180, 160, 255, 0.5);
+}
+
+@media (max-width: 900px) {
+  .gj-book {
+    flex-direction: column;
+    min-height: auto;
+  }
+  .gj-page {
+    min-height: 420px;
+  }
+}
+
 .gj-fade-leave-to {
   opacity: 0;
 }

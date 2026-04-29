@@ -21,7 +21,7 @@
       <!-- Right: Streak -->
       <div class="kb-streak-container">
   <div class="kb-streak-main">
-    <span class="kb-streak-fire">🔥</span>
+    <img :src="headerStreakImg" alt="streak plant" class="kb-streak-plant-img" />
     <span class="kb-streak-num">{{ streakDays }}</span>
   </div>
   <div class="kb-progress-box">
@@ -71,7 +71,7 @@
           </div>
         </div>
         <div class="kb-profile-divider"></div>
-        <button class="kb-profile-logout-btn" @click="profileOpen = false">Close</button>
+        <button class="kb-profile-logout-btn" @click="onLogout">🚪 Log Out</button>
       </div>
     </Transition>
 
@@ -105,56 +105,236 @@
         <span class="kb-day-num">{{ day }}</span>
 
         <!-- Flowers for this day -->
-        <div class="kb-flowers" v-if="getDayReflections(day).length > 0">
-          <div
-            v-for="(ref, ri) in getDayReflections(day)"
-            :key="ri"
-            class="kb-flower-wrap"
-            @click.stop="openPopup(day, ri)"
-          >
-            <img
-              v-if="getMoodImage(ref.mood)"
-              :src="getMoodImage(ref.mood)"
-              :alt="ref.mood"
-              class="kb-mood-img"
-            />
-            <span v-else class="kb-flower-emoji">🌱</span>
-          </div>
+        <div class="kb-flowers kb-flowers-large" v-if="getDayReflections(day).length > 0">
+          <!-- Tanah sebagai background, ukuran besar -->
+          <img src="/dirt.png" alt="dirt" class="kb-dirt-img kb-dirt-img-large" style="width:90px;height:55px;object-fit:contain;" />
+          <transition-group name="fade-flower" tag="div" class="kb-flower-group">
+            <template v-for="(ref, ri) in getDayReflections(day)" :key="ri">
+              <!-- Show all moods as flowers if moods array exists -->
+              <template v-if="ref.moods && ref.moods.length > 0">
+                <div
+                  v-for="(moodLabel, mi) in ref.moods"
+                  :key="ri + '-' + mi"
+                  class="kb-flower-wrap kb-flower-on-dirt"
+                  @click.stop="openPopup(day, ri)"
+                  :title="moodLabel"
+                >
+                  <img
+                    v-if="getMoodImage(moodLabel)"
+                    :src="getMoodImage(moodLabel)"
+                    :alt="moodLabel"
+                    class="kb-mood-img kb-mood-img-large fade-flower-item"
+                    style="width:72px;height:72px;"
+                  />
+                  <span v-else class="kb-flower-emoji fade-flower-item">🌸</span>
+                </div>
+              </template>
+              <!-- Fallback: single mood -->
+              <div
+                v-else
+                class="kb-flower-wrap kb-flower-on-dirt"
+                @click.stop="openPopup(day, ri)"
+              >
+                <img
+                  v-if="getMoodImage(ref.mood)"
+                  :src="getMoodImage(ref.mood)"
+                  :alt="ref.mood"
+                  class="kb-mood-img kb-mood-img-large fade-flower-item"
+                  style="width:72px;height:72px;"
+                />
+                <span v-else class="kb-flower-emoji fade-flower-item">🌱</span>
+              </div>
+            </template>
+          </transition-group>
         </div>
 
         <!-- Empty plot (today, no reflection yet) -->
           <div class="kb-plot" v-else-if="!isFuture(day)">
-            <img src="/dirt.png" alt="dirt" class="kb-dirt-img kb-dirt-img-large" />
+            <img src="/dirt.png" alt="dirt" class="kb-dirt-img kb-dirt-img-large" style="width:90px;height:55px;object-fit:contain;" />
           </div>
       </div>
     </div>
 
     <!-- FAB add button -->
     <div class="kb-fab-wrap">
-      <button class="kb-fab" @click="$emit('start-journal')" :title="lang === 'id' ? 'Tambah Refleksi' : 'Add Reflection'">
+      <button class="kb-fab" @click="toggleGrowthPanel" :title="lang === 'id' ? 'Tambah Refleksi' : 'Add Reflection'">
+        <img alt="scope" src="/scope.png" class="kb-fab-scope" />
         <span class="kb-fab-plus">+</span>
       </button>
       <span class="kb-fab-label">{{ lang === 'id' ? 'Tambah Refleksi' : 'Add Reflection' }}</span>
     </div>
+
+    <!-- Growth Garden Panel -->
+    <Transition name="growth-panel">
+      <div class="kb-growth-overlay" v-if="growthPanelOpen" @click.self="growthPanelOpen = false">
+        <div class="kb-growth-panel">
+          <div class="kb-growth-header">
+            <div class="kb-growth-title-row">
+              <div class="kb-growth-brand">
+                <img src="/logo.png" alt="Innerly" class="kb-growth-logo" />
+                <span class="kb-growth-brand-name">Innerly</span>
+              </div>
+              <button class="kb-growth-close" @click="growthPanelOpen = false">✕</button>
+            </div>
+            <div class="kb-growth-subtitle-row">
+              <span class="kb-growth-subtitle">{{ lang === 'id' ? 'Dashboard Kebunmu' : 'Your Garden Dashboard' }}</span>
+              <div class="kb-growth-streak-badge">
+                <img src="/pot.png" alt="pot" class="kb-streak-pot" />
+                <div class="kb-streak-badge-text">
+                  <span class="kb-streak-badge-label">Streak</span>
+                  <span class="kb-streak-badge-day">Day {{ streakDays }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="kb-growth-date-row">
+            <div class="kb-growth-date">
+              <span class="kb-growth-month">{{ currentMonthShort }}</span>
+              <span class="kb-growth-daynum">{{ currentDay }}</span>
+            </div>
+            <div class="kb-watercan-wrap">
+              <span class="kb-watercan-hint">Water your plant 💧</span>
+              <img
+                class="kb-growth-watercan"
+                :class="{ 'is-watering': isWatering }"
+                src="/water-can.png"
+                alt="water can"
+                @mousedown.prevent="onWatercanMouseDown"
+                @touchstart.prevent="onWatercanTouchStart"
+                @touchmove.prevent="onWatercanTouchMove"
+                @touchend.prevent="onWatercanTouchEnd"
+                ref="watercanRef"
+              />
+            </div>
+          </div>
+
+          <div
+            class="kb-growth-plant-area"
+            :class="{ 'drop-active': isDragOver, 'is-watered': justWatered }"
+
+            ref="plantAreaRef"
+          >
+            <!-- Water drops animation -->
+            <div v-if="isWatering" class="kb-water-drops">
+              <span v-for="i in 8" :key="i" class="kb-drop" :style="getDropStyle(i)">💧</span>
+            </div>
+            <div class="kb-growth-notes">
+              <span class="kb-note kb-note-1">♪</span>
+              <span class="kb-note kb-note-2">♫</span>
+              <span class="kb-note kb-note-3">✦</span>
+            </div>
+            <div class="kb-growth-plant-stage">
+              <img v-if="plantStage === 'dirt'" src="/dirt.png" alt="dirt" class="kb-plant-img kb-plant-dirt" />
+              <img v-else-if="plantStage === 'seed'" src="/seeds.png" alt="seed" class="kb-plant-img kb-plant-seed" />
+              <img v-else-if="plantStage === 'sprout'" src="/leaf.png" alt="sprout" class="kb-plant-img kb-plant-sprout" />
+              <img v-else-if="plantStage === 'flower' && chosenFlower" :src="chosenFlower" alt="flower" class="kb-plant-img kb-plant-flower" />
+              <img v-else src="/pot.png" alt="flower" class="kb-plant-img kb-plant-flower" />
+            </div>
+
+            <!-- Hint per stage -->
+            <Transition name="hint-fade">
+              <div v-if="!hasWateredLocally && plantStage === 'dirt'" class="kb-soil-hint">
+                💧 {{ lang === 'id' ? 'Seret ember siram ke tanah untuk menanam benih!' : 'Drag the watering can to plant your first seed!' }}
+              </div>
+            </Transition>
+            <Transition name="hint-fade">
+              <div v-if="!hasWateredLocally && plantStage === 'seed'" class="kb-soil-hint">
+                💧 {{ lang === 'id' ? 'Sirami benihmu hari ini agar tumbuh!' : 'Water your seed today to help it grow!' }}
+              </div>
+            </Transition>
+            <Transition name="hint-fade">
+              <div v-if="!hasWateredLocally && plantStage === 'sprout'" class="kb-soil-hint">
+                💧 {{ lang === 'id' ? 'Sirami tunasmu — sebentar lagi mekar!' : 'Water your sprout — almost blooming!' }}
+              </div>
+            </Transition>
+            <Transition name="hint-fade">
+              <div v-if="hasWateredLocally && plantStage === 'seed'" class="kb-soil-hint kb-soil-hint--seeded">
+                🌱 {{ lang === 'id' ? 'Benih ditanam! Besok tunasmu mulai tumbuh.' : 'Seed planted! Come back tomorrow for your sprout.' }}
+              </div>
+            </Transition>
+            <Transition name="hint-fade">
+              <div v-if="hasWateredLocally && plantStage === 'sprout'" class="kb-soil-hint kb-soil-hint--seeded">
+                🌿 {{ lang === 'id' ? 'Tunasmu disiram! Besok bungamu akan mekar.' : 'Sprout watered! Tomorrow your flower blooms.' }}
+              </div>
+            </Transition>
+            <Transition name="hint-fade">
+              <div v-if="hasWateredLocally && plantStage === 'flower'" class="kb-soil-hint kb-soil-hint--seeded">
+                🌸 {{ lang === 'id' ? 'Bungamu sedang mekar! Terus jaga streakmu.' : 'Your flower is blooming! Keep your streak going.' }}
+              </div>
+            </Transition>
+          </div>
+
+          <!-- Toast: come back tomorrow -->
+          <Transition name="toast-up">
+            <div v-if="showToast" class="kb-tomorrow-toast">
+              🌿 Come back tomorrow to water your plant!
+            </div>
+          </Transition>
+
+          <div class="kb-growth-progress-section">
+            <div class="kb-growth-streak-row">
+              <img :src="headerStreakImg" alt="streak plant" class="kb-growth-plant-icon" />
+              <span class="kb-growth-streak-label">Streak: Day {{ streakDays }}</span>
+            </div>
+            <div class="kb-growth-progress-label">
+              {{ lang === 'id' ? 'Menuju Tunas:' : 'Towards Sprout:' }}
+              <strong>{{ streakInCycle }} / 3 {{ lang === 'id' ? 'hari' : 'days' }}</strong>
+            </div>
+            <div class="kb-growth-progress-track">
+              <div class="kb-growth-progress-fill" :style="{ width: cycleProgress + '%' }"></div>
+            </div>
+            <p class="kb-growth-tip">{{ growthTip }}</p>
+          </div>
+
+          <div class="kb-growth-actions">
+            <button class="kb-growth-plant-btn" @click="onPlantReflection">
+              <span>{{ lang === 'id' ? 'Tanam Refleksi Baru (+)' : 'Plant New Reflection (+)' }}</span>
+              <span class="kb-shovel"></span>
+            </button>
+            <p class="kb-growth-hint">
+              {{ lang === 'id'
+                ? 'Satu refleksi lagi besok untuk menjaga kesehatan kebunmu.'
+                : 'One more reflection tomorrow to keep your garden healthy.'
+              }}
+            </p>
+          </div>
+        </div>
+      </div>
+    </Transition>
 
     <!-- Popup -->
     <Transition name="kb-popup">
       <div class="kb-popup-overlay" v-if="popup.show" @click.self="closePopup">
         <div class="kb-popup">
           <div class="kb-popup-header">
-            <span class="kb-popup-title">
-              {{ lang === 'id' ? 'Refleksi' : 'Reflection' }} {{ popup.day }} {{ shortMonthLabel }}:
-              {{ popup.reflection?.trigger?.slice(0, 28) }}{{ (popup.reflection?.trigger?.length ?? 0) > 28 ? '…' : '' }}
-            </span>
+            <div class="kb-popup-title-wrap">
+              <span class="kb-popup-date-badge">{{ formatPopupDate(popup.reflection?.date) }}</span>
+              <span v-if="formatCreatedAt(popup.reflection?.created_at)" class="kb-popup-time-badge">
+                🕐 {{ formatCreatedAt(popup.reflection?.created_at) }}
+              </span>
+              <span class="kb-popup-title">
+                {{ popup.reflection?.trigger?.slice(0, 36) }}{{ (popup.reflection?.trigger?.length ?? 0) > 36 ? '…' : '' }}
+              </span>
+            </div>
             <button class="kb-popup-close" @click="closePopup">✕</button>
           </div>
           <div class="kb-popup-body" v-if="popup.reflection">
-            <div class="kb-popup-row" v-if="popup.reflection.mood">
+            <!-- Show all moods as flower images -->
+            <div class="kb-popup-row" v-if="popup.reflection.moods?.length || popup.reflection.mood">
               <span class="kb-popup-label">{{ lang === 'id' ? 'Mood' : 'Mood' }}:</span>
-              <span class="kb-popup-mood">
-                <img v-if="getMoodImage(popup.reflection.mood)" :src="getMoodImage(popup.reflection.mood)" :alt="popup.reflection.mood" class="kb-popup-mood-img" />
-                {{ popup.reflection.mood }}
-              </span>
+              <div class="kb-popup-moods-row">
+                <template v-if="popup.reflection.moods && popup.reflection.moods.length > 0">
+                  <div v-for="(mLabel, mi) in popup.reflection.moods" :key="mi" class="kb-popup-mood-item">
+                    <img v-if="getMoodImage(mLabel)" :src="getMoodImage(mLabel)" :alt="mLabel" class="kb-popup-mood-img-lg" />
+                    <span class="kb-popup-mood-name">{{ mLabel }}</span>
+                  </div>
+                </template>
+                <div v-else class="kb-popup-mood-item">
+                  <img v-if="getMoodImage(popup.reflection.mood)" :src="getMoodImage(popup.reflection.mood)" :alt="popup.reflection.mood" class="kb-popup-mood-img-lg" />
+                  <span class="kb-popup-mood-name">{{ popup.reflection.mood }}</span>
+                </div>
+              </div>
             </div>
             <div class="kb-popup-row" v-if="popup.reflection.trigger">
               <span class="kb-popup-label">{{ lang === 'id' ? 'Kejadian' : 'What happened' }}:</span>
@@ -183,29 +363,80 @@
         </div>
       </div>
     </Transition>
+
+    <!-- Flower Picker Popup (muncul saat Day 3 siram pertama kali) -->
+    <Transition name="kb-popup">
+      <div class="kb-popup-overlay" v-if="showFlowerPicker" @click.self="onFlowerPickerClose">
+        <div class="kb-flower-picker">
+          <div class="kb-flower-picker-header">
+            <span class="kb-flower-picker-title">
+              {{ lang === 'id' ? '🌸 Pilih Bungamu!' : '🌸 Choose Your Flower!' }}
+            </span>
+            <button class="kb-popup-close" @click="onFlowerPickerClose">✕</button>
+          </div>
+          <p class="kb-flower-picker-subtitle">
+            {{ lang === 'id'
+              ? 'Kebunmu sudah siap mekar! Pilih bunga yang mewakili perasaanmu.'
+              : 'Your garden is ready to bloom! Pick a flower that represents you.'
+            }}
+          </p>
+          <div class="kb-flower-grid">
+            <button
+              v-for="f in flowerOptions"
+              :key="f.key"
+              class="kb-flower-option"
+              :class="{ 'selected': tempFlower === f.img }"
+              @click="tempFlower = f.img"
+            >
+              <img :src="f.img" :alt="f.label" class="kb-flower-option-img" />
+              <span class="kb-flower-option-label">{{ lang === 'id' ? f.labelId : f.label }}</span>
+            </button>
+          </div>
+          <button
+            class="kb-flower-confirm-btn"
+            :disabled="!tempFlower"
+            @click="confirmFlower"
+          >
+            {{ lang === 'id' ? 'Tanam Bunga Ini 🌱' : 'Plant This Flower 🌱' }}
+          </button>
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
 
 <script setup>
+import { ref, computed, onMounted, onUnmounted, watch} from 'vue'
 import { authService } from '../services/auth.js'
-onMounted(() => {
-  const user = authService.getUser && authService.getUser()
-  if (user) {
-    userEmail.value = user.email || 'user@innerly.app'
-    userUsername.value = user.username || ''
-  }
-})
-import { ref, computed, onMounted, onUnmounted } from 'vue'
 
 const props = defineProps({
   isDark: Boolean,
   lang: { type: String, default: 'id' },
   reflections: { type: Array, default: () => [] },
   streakDays: { type: Number, default: 0 },
+  openGarden: { type: Number, default: 0 },
   userName: { type: String, default: '' },
+  pendingReflection: { type: Object, default: null },
 })
 
-const emit = defineEmits(['start-journal'])
+const emit = defineEmits(['start-journal', 'logout'])
+
+// Open garden popup when triggered from parent (after journal done)
+// Auto-open selalu muncul setiap kali ada trigger baru (setelah refleksi disimpan)
+watch(() => props.openGarden, (val) => {
+  if (val > 0) {
+    setTimeout(() => { growthPanelOpen.value = true }, 600)
+  }
+})
+
+// Auto-open growth panel when a new reflection is added (termasuk new user pertama kali)
+watch(() => props.pendingReflection, (newVal) => {
+  if (newVal) {
+    setTimeout(() => { growthPanelOpen.value = true }, 600)
+  }
+})
+
+// Auto-open only triggered by new reflection (see pendingReflection watch above)
 
 // Profile dropdown
 const profileOpen = ref(false)
@@ -268,7 +499,15 @@ function handleOutsideClick(e) {
   }
 }
 
-onMounted(() => document.addEventListener('mousedown', handleOutsideClick))
+onMounted(() => {
+  document.addEventListener('mousedown', handleOutsideClick)
+  // Load user profile from auth service
+  const user = authService.getUser && authService.getUser()
+  if (user) {
+    userEmail.value = user.email || 'user@innerly.app'
+    userUsername.value = user.username || ''
+  }
+})
 onUnmounted(() => document.removeEventListener('mousedown', handleOutsideClick))
 
 const today = new Date()
@@ -334,21 +573,22 @@ function getDayReflections(day) {
 
 // Mood label → image file key (same as /public/*.png)
 const moodImageMap = {
-  // ID labels
+  // ID labels (from GuidedJournal)
   'Senang': 'happy', 'Tenang': 'calm', 'Bersemangat': 'excited',
   'Sedih': 'sad', 'Cemas': 'anxious', 'Frustrasi': 'frustrated',
   'Bingung': 'confused', 'Lelah': 'tired', 'Terharu': 'touched',
-  'Biasa aja': 'so-so',
-  // EN labels
+  'Biasa aja': 'so-so', 'Biasa saja': 'so-so', 'Bangga': 'excited', 'Marah': 'frustrated', 'Tersentuh': 'touched',
+  // EN labels (from GuidedJournal)
   'Happy': 'happy', 'Calm': 'calm', 'Excited': 'excited',
   'Sad': 'sad', 'Anxious': 'anxious', 'Frustrated': 'frustrated',
   'Confused': 'confused', 'Tired': 'tired', 'Touched': 'touched',
-  'So-so': 'so-so',
+  'So-so': 'so-so', 'Proud': 'excited', 'Angry': 'frustrated',
 }
 
 function getMoodImage(mood) {
   const key = moodImageMap[mood]
-  return key ? `/${key}.png` : null
+  if (!key) return null
+  return `/${key}1.png`
 }
 
 function prevMonth() {
@@ -377,6 +617,307 @@ function openPopup(day, idx) {
 function closePopup() {
   popup.value = { show: false, day: null, idx: null, reflection: null }
 }
+
+function formatPopupDate(dateStr) {
+  if (!dateStr) return ''
+  const d = new Date(dateStr + 'T00:00:00')
+  const months = {
+    en: ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],
+    id: ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"]
+  }
+  const names = months[props.lang] || months.en
+  return `${d.getDate()} ${names[d.getMonth()]} ${d.getFullYear()}`
+}
+
+function formatCreatedAt(createdAt) {
+  if (!createdAt) return null
+  const d = new Date(createdAt)
+  const h = String(d.getHours()).padStart(2, '0')
+  const m = String(d.getMinutes()).padStart(2, '0')
+  return `${h}:${m}`
+}
+
+// ── Growth Garden Panel ──
+const growthPanelOpen = ref(false)
+const isWatering = ref(false)
+const justWatered = ref(false)
+const isDragOver = ref(false)
+const watercanRef = ref(null)
+const plantAreaRef = ref(null)
+
+// Toast for "come back tomorrow"
+const showToast = ref(false)
+let toastTimer = null
+
+function showComeBackToast() {
+  showToast.value = true
+  if (toastTimer) clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => { showToast.value = false }, 2800)
+}
+
+// Watered state persisted to DB
+function getTodayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+const hasWateredLocally = ref(false);
+
+// ── Flower picker ──
+const showFlowerPicker = ref(false)
+const tempFlower = ref(null)
+const chosenFlower = ref(localStorage.getItem('innerly_chosen_flower') || null)
+
+const flowerOptions = [
+  { key: 'happy',      img: '/happy1.png',      label: 'Happy',      labelId: 'Senang'      },
+  { key: 'calm',       img: '/calm1.png',        label: 'Calm',       labelId: 'Tenang'      },
+  { key: 'excited',    img: '/excited1.png',     label: 'Excited',    labelId: 'Bersemangat' },
+  { key: 'sad',        img: '/sad1.png',         label: 'Sad',        labelId: 'Sedih'       },
+  { key: 'anxious',    img: '/anxious1.png',     label: 'Anxious',    labelId: 'Cemas'       },
+  { key: 'frustrated', img: '/frustrated1.png',  label: 'Frustrated', labelId: 'Frustrasi'   },
+  { key: 'confused',   img: '/confused1.png',    label: 'Confused',   labelId: 'Bingung'     },
+  { key: 'tired',      img: '/tired1.png',       label: 'Tired',      labelId: 'Lelah'       },
+  { key: 'touched',    img: '/touched1.png',     label: 'Touched',    labelId: 'Terharu'     },
+  { key: 'so-so',      img: '/so-so1.png',       label: 'So-so',      labelId: 'Biasa aja'   },
+]
+
+function confirmFlower() {
+  if (!tempFlower.value) return
+  chosenFlower.value = tempFlower.value
+  localStorage.setItem('innerly_chosen_flower', tempFlower.value)
+  showFlowerPicker.value = false
+  tempFlower.value = null
+}
+
+function onFlowerPickerClose() {
+  // Jika user tutup tanpa pilih, pakai default pot.png
+  if (!chosenFlower.value) chosenFlower.value = '/pot.png'
+  showFlowerPicker.value = false
+  tempFlower.value = null
+}
+
+// Load watered state from DB on mount
+onMounted(async () => {
+  const user = authService.getUser && authService.getUser();
+  const userId = user && (user._id || user.id);
+  if (userId) {
+    try {
+      const res = await fetch(`/api/streak/${userId}`);
+      const data = await res.json();
+      if (data.last_watered_date) {
+        const watered = data.last_watered_date.split('T')[0];
+        hasWateredLocally.value = watered === getTodayKey();
+      }
+    } catch (e) {
+      console.warn('Could not load watered state:', e);
+    }
+  }
+});
+
+// Touch drag state
+let touchOffsetX = 0
+let touchOffsetY = 0
+let touchEl = null
+
+// ── Drag logic: floating clone follows cursor/touch ──
+let floatingEl = null
+
+function createFloating(x, y) {
+  floatingEl = document.createElement('img')
+  floatingEl.src = '/water-can1.png'
+  floatingEl.style.cssText = 'position:fixed;width:80px;height:80px;object-fit:contain;z-index:9999;pointer-events:none;opacity:0.92;transform:rotate(-20deg);filter:drop-shadow(0 6px 16px rgba(76,175,80,0.5));'
+  moveFloating(x, y)
+  document.body.appendChild(floatingEl)
+}
+
+function moveFloating(x, y) {
+  if (!floatingEl) return
+  floatingEl.style.left = (x - 40) + 'px'
+  floatingEl.style.top = (y - 40) + 'px'
+}
+
+function removeFloating() {
+  if (floatingEl) { document.body.removeChild(floatingEl); floatingEl = null }
+}
+
+function checkOverPlantArea(x, y) {
+  if (!plantAreaRef.value) return false
+  const rect = plantAreaRef.value.getBoundingClientRect()
+  return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom
+}
+
+function onWatercanMouseDown(e) {
+  e.preventDefault()
+  createFloating(e.clientX, e.clientY)
+  const onMove = (ev) => {
+    moveFloating(ev.clientX, ev.clientY)
+    isDragOver.value = checkOverPlantArea(ev.clientX, ev.clientY)
+  }
+  const onUp = (ev) => {
+    removeFloating()
+    const droppedOnPlant = checkOverPlantArea(ev.clientX, ev.clientY)
+    if (droppedOnPlant) {
+      triggerWatering()
+    }
+    isDragOver.value = false
+    document.removeEventListener('mousemove', onMove)
+    document.removeEventListener('mouseup', onUp)
+  }
+  document.addEventListener('mousemove', onMove)
+  document.addEventListener('mouseup', onUp)
+}
+
+function onWatercanTouchStart(e) {
+  e.preventDefault()
+  const touch = e.touches[0]
+  createFloating(touch.clientX, touch.clientY)
+}
+function onWatercanTouchMove(e) {
+  e.preventDefault()
+  const touch = e.touches[0]
+  moveFloating(touch.clientX, touch.clientY)
+  isDragOver.value = checkOverPlantArea(touch.clientX, touch.clientY)
+}
+function onWatercanTouchEnd(e) {
+  const dropped = isDragOver.value
+  removeFloating()
+  isDragOver.value = false
+  if (dropped) {
+    triggerWatering()
+  }
+}
+
+function onWatercanDragStart(e) { e.preventDefault() }
+function onWaterDrop() {}
+
+function triggerWatering() {
+  if (isWatering.value) return
+  // Block if already watered today
+  if (hasWateredLocally.value) {
+    showComeBackToast()
+    return
+  }
+  // Animasi siram
+  isWatering.value = true
+  justWatered.value = true
+  setTimeout(() => {
+    isWatering.value = false
+    justWatered.value = false
+    hasWateredLocally.value = true
+    // Save watered date to DB
+    const user = authService.getUser && authService.getUser();
+    const userId = user && (user._id || user.id);
+    if (userId) {
+      fetch(`/api/streak/${userId}/water`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date: getTodayKey() })
+      }).catch(e => console.warn('Could not save watered date:', e));
+    }
+    // Day 3 (streakDays >= 2) dan belum pernah pilih bunga → tampilkan flower picker
+    if (props.streakDays >= 2 && !chosenFlower.value) {
+      setTimeout(() => { showFlowerPicker.value = true }, 400)
+    }
+  }, 1800)
+}
+
+function getDropStyle(i) {
+  const x = 20 + ((i * 37) % 60)
+  const delay = (i * 0.12) % 0.9
+  return { left: x + '%', animationDelay: delay + 's' }
+}
+
+function toggleGrowthPanel() {
+  growthPanelOpen.value = !growthPanelOpen.value
+}
+
+const todayDate = new Date()
+
+const currentDay = computed(() => todayDate.getDate())
+
+const currentMonthShort = computed(() => {
+  const months = {
+    id: ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'],
+    en: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+  }
+  return (months[props.lang] || months.en)[todayDate.getMonth()]
+})
+
+// How many days into current 3-day cycle
+const streakInCycle = computed(() => {
+  // Progress baru naik setelah user siram hari ini
+  const base = hasWateredLocally.value ? props.streakDays : props.streakDays - 1
+  if (base <= 0) return 0
+  const mod = base % 3
+  return mod === 0 ? 3 : mod
+})
+
+const cycleProgress = computed(() => {
+  return (streakInCycle.value / 3) * 100
+})
+
+// Plant stage:
+// Day 1: dirt → (siram) → seed
+// Day 2: seed → (siram) → leaf
+// Day 3+: leaf → (siram) → flower pilihan
+const plantStage = computed(() => {
+  if (props.streakDays <= 1) return hasWateredLocally.value ? 'seed' : 'dirt'
+  if (props.streakDays === 2) return hasWateredLocally.value ? 'sprout' : 'seed'
+  if (props.streakDays >= 3) return hasWateredLocally.value ? 'flower' : 'sprout'
+  return 'dirt'
+})
+
+// Header streak icon
+const headerStreakImg = computed(() => {
+  const stage = plantStage.value
+  if (stage === 'dirt') return '/dirt.png'
+  if (stage === 'seed') return '/seeds.png'
+  if (stage === 'sprout') return '/leaf.png'
+  return chosenFlower.value || '/pot.png'
+})
+
+const growthTip = computed(() => {
+  const stage = plantStage.value
+  if (props.lang === 'id') {
+    if (stage === 'dirt') return 'Seret ember siram ke tanah untuk menanam benih pertamamu!'
+    if (stage === 'seed' && !hasWateredLocally.value) return 'Benihmu sudah ada! Sirami hari ini agar tumbuh jadi tunas.'
+    if (stage === 'seed' && hasWateredLocally.value) return 'Benih disiram! Besok tunasmu mulai tumbuh 🌱'
+    if (stage === 'sprout' && !hasWateredLocally.value) return 'Tunasmu tumbuh! Sirami hari ini agar mekar jadi bunga.'
+    if (stage === 'sprout' && hasWateredLocally.value) return 'Hampir mekar! Besok pilihlah bungamu 🌸'
+    if (stage === 'flower' && !hasWateredLocally.value) return 'Kebunmu sudah mekar! Sirami untuk menjaga bungamu tetap indah.'
+    return 'Luar biasa! Kebunmu sedang mekar. Terus jaga streakmu!'
+  } else {
+    if (stage === 'dirt') return 'Drag the watering can to plant your first seed!'
+    if (stage === 'seed' && !hasWateredLocally.value) return 'Your seed is here! Water it today to grow a sprout.'
+    if (stage === 'seed' && hasWateredLocally.value) return 'Seed watered! Tomorrow your sprout begins to grow 🌱'
+    if (stage === 'sprout' && !hasWateredLocally.value) return 'Your sprout is growing! Water today to make it bloom.'
+    if (stage === 'sprout' && hasWateredLocally.value) return 'Almost there! Tomorrow choose your flower 🌸'
+    if (stage === 'flower' && !hasWateredLocally.value) return 'Your garden bloomed! Water it to keep your flower beautiful.'
+    return 'Amazing! Your garden is blooming. Keep up your streak!'
+  }
+})
+
+// Reset local watered state saat tanggal berubah (hari baru)
+// Ini dihandle by onMounted yang cek last_watered_date dari DB
+watch(() => props.streakDays, (val) => {
+  // Jika streak naik (hari baru, refleksi baru disimpan), reset hasWateredLocally
+  // agar user bisa siram lagi hari itu
+  // (state sebenarnya dicek dari DB di onMounted)
+})
+
+function onLogout() {
+  // Bersihkan data user dari localStorage
+  try {
+    localStorage.removeItem('innerly_user')
+    localStorage.removeItem('innerly_reflections')
+  } catch {}
+  profileOpen.value = false
+  emit('logout')
+}
+
+function onPlantReflection() {
+  growthPanelOpen.value = false
+  emit('start-journal')
+}
 </script>
 
 <style scoped>
@@ -388,7 +929,7 @@ function closePopup() {
   gap: 0;
   font-family: 'Outfit', sans-serif;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
 }
 
 /* ── Header ── */
@@ -481,6 +1022,12 @@ function closePopup() {
 }
 
 .kb-streak-fire { font-size: 1rem; }
+.kb-streak-plant-img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.15));
+}
 .kb-streak-num {
   font-size: 0.95rem;
   font-weight: 700;
@@ -699,11 +1246,11 @@ function closePopup() {
   flex: 1;
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  grid-auto-rows: minmax(90px, 1fr);
+  grid-auto-rows: minmax(115px, auto);
   gap: 0;
   border-left: 1px solid var(--border);
   border-top: 1px solid var(--border);
-  overflow-y: auto;
+  overflow: visible;
 }
 
 .kb-day-label {
@@ -800,12 +1347,20 @@ function closePopup() {
 
 /* Mood images */
 .kb-mood-img {
-  width: 44px;
-  height: 44px;
+  width: 72px;
+  height: 72px;
   object-fit: contain;
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.12));
-  transition: transform 0.15s;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.15));
+  transition: transform 0.2s ease;
+  animation: flower-appear 0.4s cubic-bezier(0.34, 1.4, 0.64, 1) both;
 }
+@keyframes flower-appear {
+  from { transform: scale(0) translateY(8px); opacity: 0; }
+  to   { transform: scale(1) translateY(0);   opacity: 1; }
+}
+.kb-flower-wrap:nth-child(2) .kb-mood-img { animation-delay: 0.06s; }
+.kb-flower-wrap:nth-child(3) .kb-mood-img { animation-delay: 0.12s; }
+.kb-flower-wrap:nth-child(4) .kb-mood-img { animation-delay: 0.18s; }
 .kb-popup-mood {
   display: flex;
   align-items: center;
@@ -815,6 +1370,36 @@ function closePopup() {
   width: 28px;
   height: 28px;
   object-fit: contain;
+}
+
+/* Multi-mood display in popup */
+.kb-popup-moods-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-start;
+}
+.kb-popup-mood-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.kb-popup-mood-img-lg {
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.12));
+  transition: transform 0.15s;
+}
+.kb-popup-mood-item:hover .kb-popup-mood-img-lg {
+  transform: scale(1.1) translateY(-2px);
+}
+.kb-popup-mood-name {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-align: center;
 }
 
 /* Empty plot */
@@ -829,9 +1414,10 @@ function closePopup() {
 /* ── FAB ── */
 .kb-fab-wrap {
   position: fixed;
-  bottom: 80px;
-  left: 50%;
-  transform: translateX(-50%);
+  bottom: 88px;
+  right: 24px;
+  left: auto;
+  transform: none;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -839,27 +1425,42 @@ function closePopup() {
   z-index: 50;
 }
 .kb-fab {
-  width: 56px;
-  height: 56px;
+  width: 64px;
+  height: 64px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #7c6ca8 0%, #c084fc 100%);
+  background: linear-gradient(135deg, #4caf50 0%, #81c784 100%);
   border: none;
   color: white;
   font-size: 1.8rem;
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 0;
   cursor: pointer;
-  box-shadow: 0 6px 24px rgba(124, 108, 168, 0.45);
+  box-shadow: 0 6px 24px rgba(76, 175, 80, 0.5);
   transition: transform 0.18s, box-shadow 0.18s;
+  position: relative;
 }
 .kb-fab:hover {
   transform: scale(1.1);
-  box-shadow: 0 10px 30px rgba(124, 108, 168, 0.55);
+  box-shadow: 0 10px 30px rgba(76, 175, 80, 0.6);
+}
+.kb-fab-scope {
+  position: absolute;
+  right: -18px;
+  bottom: 6px;
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.25));
+  transform: rotate(-15deg);
+  pointer-events: none;
 }
 .kb-fab-plus {
   line-height: 1;
   margin-top: -2px;
+  font-size: 2rem;
+  font-weight: 700;
 }
 .kb-fab-label {
   font-size: 0.7rem;
@@ -867,6 +1468,59 @@ function closePopup() {
   color: var(--text-secondary);
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+/* ── Water drop animation ── */
+.kb-water-drops {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+.kb-drop {
+  position: absolute;
+  top: 0;
+  font-size: 1.2rem;
+  animation: drop-fall 0.8s ease-in forwards;
+}
+@keyframes drop-fall {
+  0% { transform: translateY(-10px); opacity: 1; }
+  100% { transform: translateY(80px); opacity: 0; }
+}
+.kb-growth-plant-area.drop-active {
+  outline: 3px dashed #4caf50;
+  outline-offset: -3px;
+  background: linear-gradient(180deg, #d4f0cc 0%, #b8e0a8 100%);
+}
+.kb-growth-plant-area.is-watered {
+  animation: watered-flash 1.8s ease;
+}
+@keyframes watered-flash {
+  0%, 100% { filter: none; }
+  30% { filter: brightness(1.15) saturate(1.3); }
+}
+.kb-watercan-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.kb-watercan-hint {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: rgba(80, 100, 60, 0.6);
+  letter-spacing: 0.02em;
+  text-align: center;
+  white-space: nowrap;
+}
+.kb-growth-watercan {
+  cursor: grab;
+  touch-action: none;
+}
+.kb-growth-watercan:active,
+.kb-growth-watercan.is-watering {
+  cursor: grabbing;
+  filter: drop-shadow(0 4px 12px rgba(76,175,80,0.5));
 }
 
 /* ── Popup ── */
@@ -897,9 +1551,31 @@ function closePopup() {
   justify-content: space-between;
   gap: 8px;
 }
+.kb-popup-title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+.kb-popup-date-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--accent);
+  background: var(--accent-soft);
+  padding: 2px 8px;
+  border-radius: 20px;
+  width: fit-content;
+  letter-spacing: 0.04em;
+}
+.kb-popup-time-badge {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #888;
+  margin-top: 2px;
+}
 .kb-popup-title {
   font-weight: 700;
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   color: var(--text-primary);
   line-height: 1.4;
 }
@@ -954,5 +1630,487 @@ function closePopup() {
 .kb-popup-enter-from, .kb-popup-leave-to {
   opacity: 0;
   transform: scale(0.95);
+}
+</style>
+<style scoped>
+/* ── Growth Garden Panel ── */
+.kb-growth-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.42);
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+}
+
+.kb-growth-panel {
+  background: #f0f7ee;
+  border-radius: 28px 28px 0 0;
+  padding: 24px 24px 32px;
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 -8px 40px rgba(0,0,0,0.18);
+  max-height: 88vh;
+  overflow-y: hidden;
+}
+
+/* Header */
+.kb-growth-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.kb-growth-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.kb-growth-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.kb-growth-logo {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+}
+.kb-growth-brand-name {
+  font-family: var(--font-heading, 'Playfair Display', serif);
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #5a4a3a;
+  letter-spacing: -0.01em;
+}
+.kb-growth-close {
+  background: rgba(0,0,0,0.08);
+  border: none;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  font-size: 0.85rem;
+  color: #666;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+.kb-growth-close:hover { background: rgba(0,0,0,0.15); }
+
+.kb-growth-subtitle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.kb-growth-subtitle {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #3d3529;
+}
+.kb-growth-streak-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #fff9e8;
+  border: 1.5px solid #f0d080;
+  border-radius: 14px;
+  padding: 6px 12px;
+}
+.kb-streak-pot {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+}
+.kb-streak-badge-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+.kb-streak-badge-label {
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: #a08040;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.kb-streak-badge-day {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #5a4a2a;
+}
+
+/* Date + water can row */
+.kb-growth-date-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 4px;
+}
+.kb-growth-date {
+  display: flex;
+  flex-direction: column;
+  line-height: 1;
+}
+.kb-growth-month {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #7a6a5a;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.kb-growth-daynum {
+  font-size: 2.4rem;
+  font-weight: 800;
+  color: #3d3529;
+  line-height: 1;
+}
+.kb-growth-watercan {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  opacity: 0.85;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.12));
+  animation: watercan-bob 3s ease-in-out infinite;
+}
+@keyframes watercan-bob {
+  0%, 100% { transform: translateY(0) rotate(-4deg); }
+  50% { transform: translateY(-6px) rotate(2deg); }
+}
+
+/* Plant area */
+.kb-growth-plant-area {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  height: 130px;
+  background: linear-gradient(180deg, #e8f5e3 0%, #c8e8b8 100%);
+  border-radius: 18px;
+  overflow: hidden;
+}
+.kb-growth-plant-stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding-bottom: 0;
+}
+.kb-plant-img {
+  object-fit: contain;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.12));
+  transition: transform 0.3s ease;
+}
+.kb-plant-seed {
+  width: 70px;
+  height: 70px;
+  animation: seed-pulse 2s ease-in-out infinite;
+}
+@keyframes seed-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+.kb-plant-dirt {
+  width: 150px;
+  height: 90px;
+  object-fit: contain;
+  opacity: 0.7;
+  margin-bottom: 28px;
+}
+.kb-plant-sprout {
+  width: 90px;
+  height: 90px;
+  animation: sprout-sway 3s ease-in-out infinite;
+}
+@keyframes sprout-sway {
+  0%, 100% { transform: rotate(-3deg); }
+  50% { transform: rotate(3deg); }
+}
+.kb-plant-flower {
+  width: 110px;
+  height: 110px;
+  animation: flower-bounce 2.5s ease-in-out infinite;
+}
+@keyframes flower-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+/* Floating music notes */
+.kb-growth-notes {
+  position: absolute;
+  top: 8px;
+  right: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.kb-note {
+  font-size: 1.1rem;
+  opacity: 0.6;
+  animation: note-float 2.5s ease-in-out infinite;
+}
+.kb-note-1 { color: #a855f7; animation-delay: 0s; }
+.kb-note-2 { color: #ec4899; animation-delay: 0.6s; font-size: 0.9rem; }
+.kb-note-3 { color: #f59e0b; animation-delay: 1.2s; font-size: 0.8rem; }
+@keyframes note-float {
+  0%, 100% { transform: translateY(0) rotate(-5deg); opacity: 0.5; }
+  50% { transform: translateY(-10px) rotate(5deg); opacity: 0.9; }
+}
+
+/* Progress section */
+.kb-growth-progress-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.kb-growth-streak-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.kb-growth-fire { font-size: 1.2rem; }
+.kb-growth-plant-icon {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.15));
+}
+.kb-growth-streak-label {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #3d3529;
+}
+.kb-growth-progress-label {
+  font-size: 0.82rem;
+  color: #6b5a48;
+}
+.kb-growth-progress-label strong {
+  color: #3d3529;
+}
+.kb-growth-progress-track {
+  width: 100%;
+  height: 10px;
+  background: #d4e8c8;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1.5px solid #b0d4a0;
+}
+.kb-growth-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #6ab04c, #a8e060);
+  border-radius: 10px;
+  transition: width 0.6s cubic-bezier(0.34, 1.2, 0.64, 1);
+  box-shadow: 0 2px 6px rgba(106, 176, 76, 0.4);
+}
+.kb-growth-tip {
+  font-size: 0.8rem;
+  color: #7a6a5a;
+  font-style: italic;
+  line-height: 1.4;
+}
+
+/* Action area */
+.kb-growth-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.kb-growth-plant-btn {
+  width: 100%;
+  padding: 14px 20px;
+  border-radius: 50px;
+  background: linear-gradient(135deg, #6ab04c, #a8e060);
+  border: none;
+  color: white;
+  font-size: 0.95rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(106, 176, 76, 0.4);
+  transition: transform 0.18s, box-shadow 0.18s;
+  font-family: 'Outfit', sans-serif;
+}
+.kb-growth-plant-btn:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 10px 28px rgba(106, 176, 76, 0.5);
+}
+.kb-shovel { font-size: 1.2rem; }
+.kb-growth-hint {
+  font-size: 0.75rem;
+  color: #8a7a6a;
+  text-align: center;
+  line-height: 1.4;
+}
+
+/* Growth panel transition — slide up from bottom */
+.growth-panel-enter-active, .growth-panel-leave-active {
+  transition: opacity 0.25s ease;
+}
+.growth-panel-enter-active .kb-growth-panel,
+.growth-panel-leave-active .kb-growth-panel {
+  transition: transform 0.3s cubic-bezier(0.34, 1.2, 0.64, 1);
+}
+.growth-panel-enter-from { opacity: 0; }
+.growth-panel-leave-to { opacity: 0; }
+.growth-panel-enter-from .kb-growth-panel { transform: translateY(100%); }
+.growth-panel-leave-to .kb-growth-panel { transform: translateY(100%); }
+
+/* ── Soil hint text (new user instruction) ── */
+.kb-soil-hint {
+  position: absolute;
+  bottom: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255,255,255,0.88);
+  color: #4a7c3f;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 20px;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(76,175,80,0.18);
+  border: 1.5px solid rgba(106,176,76,0.3);
+  pointer-events: none;
+  text-align: center;
+}
+.kb-soil-hint--seeded {
+  color: #3a6a2a;
+  background: rgba(220,255,200,0.92);
+  border-color: rgba(106,176,76,0.5);
+}
+
+/* Hint fade transition */
+.hint-fade-enter-active, .hint-fade-leave-active {
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+.hint-fade-enter-from, .hint-fade-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(6px);
+}
+
+/* ── Toast: come back tomorrow ── */
+.kb-tomorrow-toast {
+  background: #fff9e8;
+  border: 1.5px solid #f0d080;
+  color: #7a5a20;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 10px 16px;
+  border-radius: 14px;
+  text-align: center;
+  box-shadow: 0 4px 16px rgba(240,208,128,0.3);
+  margin-top: -6px;
+}
+
+/* Toast slide-up transition */
+.toast-up-enter-active, .toast-up-leave-active {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+.toast-up-enter-from, .toast-up-leave-to {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+/* ── Flower Picker Popup ── */
+.kb-flower-picker {
+  background: var(--bg-card);
+  border-radius: 24px;
+  padding: 24px;
+  max-width: 400px;
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+.kb-flower-picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.kb-flower-picker-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+.kb-flower-picker-subtitle {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: -8px 0 0;
+}
+.kb-flower-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+}
+.kb-flower-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 6px;
+  border-radius: 14px;
+  border: 2px solid var(--border);
+  background: var(--bg-base);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, transform 0.15s;
+}
+.kb-flower-option:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  transform: translateY(-3px);
+}
+.kb-flower-option.selected {
+  border-color: #4caf50;
+  background: rgba(76, 175, 80, 0.12);
+  transform: translateY(-3px);
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+}
+.kb-flower-option-img {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.12));
+}
+.kb-flower-option-label {
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-align: center;
+  line-height: 1.2;
+}
+.kb-flower-confirm-btn {
+  width: 100%;
+  padding: 14px;
+  border-radius: 50px;
+  background: linear-gradient(135deg, #4caf50, #81c784);
+  border: none;
+  color: white;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: 'Outfit', sans-serif;
+  box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+  transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+}
+.kb-flower-confirm-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(76, 175, 80, 0.5);
+}
+.kb-flower-confirm-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 </style>

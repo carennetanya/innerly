@@ -95,6 +95,21 @@
           <span class="brand-text">Innerly</span>
         </div>
         <span class="brand-tagline">Reflect deeper, grow stronger.</span>
+        <!-- Committed reminder notif -->
+        <Transition name="reminder-pop">
+          <div v-if="reminderAction && phase >= 6" class="ls-reminder-card">
+            <div class="ls-reminder-icon">
+              <img v-if="reminderMoodImg" :src="reminderMoodImg" :alt="reminderMood" class="ls-reminder-mood-img" />
+              <span v-else>💪</span>
+            </div>
+            <div class="ls-reminder-body">
+              <div class="ls-reminder-title">Today's Commitment</div>
+              <div class="ls-reminder-text">{{ reminderAction }}</div>
+            </div>
+            <button class="ls-reminder-dismiss" @click="dismissReminder">✓</button>
+          </div>
+        </Transition>
+
         <button
           class="start-btn"
           :class="{ show: phase >= 6 }"
@@ -183,10 +198,18 @@
 
 <script setup>
 import { ref, computed, onMounted } from "vue";
+import { authService } from "../services/auth.js";
+import { commitmentService } from "../services/commitment.js";
 
 const props = defineProps({ audioEl: Object });
 const emit = defineEmits(["done"]);
 const phase = ref(0);
+
+// Tomorrow's committed reminder
+const reminderAction = ref('');
+const reminderMoodImg = ref('');
+const reminderMood = ref('');
+const reminderDbId = ref(null);
 const visible = ref(true);
 const showSparks1 = ref(false);
 const showSparks2 = ref(false);
@@ -250,6 +273,19 @@ function pickMode(dark) {
   setTimeout(() => {
     phase.value = 6;
   }, 9100);
+}
+
+async function dismissReminder() {
+  try {
+    const user = authService.getUser && authService.getUser();
+    if (user && user.id && reminderDbId.value) {
+      await commitmentService.markDone(user.id, reminderDbId.value);
+    }
+  } catch (e) {
+    console.warn('Could not mark done:', e);
+  }
+  reminderAction.value = '';
+  localStorage.removeItem('innerly_reminder');
 }
 
 function handleStart(skipIntro = false) {
@@ -327,10 +363,44 @@ function fadeInMusic(audio, targetVolume = 0.55, durationMs = 2500) {
     });
 }
 
-onMounted(() => {
+onMounted(async () => {
   setTimeout(() => {
     pickerVisible.value = true;
   }, 600);
+
+  // Check reminder: try DB first, fallback to localStorage
+  try {
+    const today = new Date();
+    const todayKey = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+
+    const user = authService.getUser && authService.getUser();
+    if (user && user.id) {
+      const dbReminder = await commitmentService.getToday(user.id, todayKey);
+      if (dbReminder && !dbReminder.is_done) {
+        reminderAction.value = dbReminder.action;
+        reminderMoodImg.value = dbReminder.mood_img || '';
+        reminderMood.value = dbReminder.mood || '';
+        reminderDbId.value = dbReminder.id;
+      }
+    } else {
+      // Fallback: localStorage
+      const raw = localStorage.getItem('innerly_reminder');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        const { date, action } = parsed;
+        if (date === todayKey) {
+          reminderAction.value = action;
+          reminderMoodImg.value = parsed.moodImg || '';
+          reminderMood.value = parsed.mood || '';
+          reminderDbId.value = parsed.dbId || null;
+        } else if (date < todayKey) {
+          localStorage.removeItem('innerly_reminder');
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Could not load reminder:', e);
+  }
 });
 </script>
 
@@ -1240,6 +1310,93 @@ onMounted(() => {
 }
 .dark-mode .brand-tagline {
   color: rgba(106, 176, 76, 0.7);
+}
+
+/* ── Committed Reminder Card ── */
+.ls-reminder-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(12px);
+  border: 1.5px solid rgba(255, 255, 255, 0.28);
+  border-radius: 18px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  max-width: 320px;
+  width: 100%;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+}
+.dark-mode .ls-reminder-card {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+.ls-reminder-icon {
+  font-size: 1.6rem;
+  flex-shrink: 0;
+}
+.ls-reminder-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  text-align: left;
+}
+.ls-reminder-title {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(80, 60, 120, 0.75);
+}
+.ls-reminder-text {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: rgba(50, 30, 80, 0.95);
+  line-height: 1.4;
+}
+.dark-mode .ls-reminder-title {
+  color: rgba(255, 255, 255, 0.65);
+}
+.dark-mode .ls-reminder-text {
+  color: rgba(255, 255, 255, 0.95);
+}
+.ls-reminder-dismiss {
+  background: rgba(255,255,255,0.2);
+  border: none;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  color: white;
+  font-size: 0.85rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+.ls-reminder-dismiss:hover {
+  background: rgba(255,255,255,0.32);
+}
+.ls-reminder-mood-img {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.15));
+}
+
+/* Reminder pop transition */
+.reminder-pop-enter-active {
+  transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.34, 1.4, 0.64, 1);
+  transition-delay: 0.3s;
+}
+.reminder-pop-leave-active {
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.reminder-pop-enter-from, .reminder-pop-leave-to {
+  opacity: 0;
+  transform: translateY(10px) scale(0.96);
 }
 
 .start-btn {

@@ -60,7 +60,10 @@
           :reflections="reflections"
           :streak-days="streakDays"
           :user-name="props.userName"
+          :pending-reflection="props.pendingReflection"
+          :open-garden="openGardenTrigger"
           @start-journal="activeView = 'journal'"
+          @logout="$emit('logout')"
         />
       </div>
 
@@ -219,9 +222,11 @@
 </template>
 
 <script setup>
-import { ref, computed } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import GuidedJournal from "../components/GuidedJournal.vue";
 import GardenView from "../components/GardenView.vue";
+import { reflectionService } from "../services/reflection.js";
+import { authService } from "../services/auth.js";
 
 const props = defineProps({
   isDark: Boolean,
@@ -229,6 +234,7 @@ const props = defineProps({
   initialReflection: { type: String, default: "" },
   initialMood: { type: Object, default: null },
   lang: { type: String, default: "en" },
+  pendingReflection: { type: Object, default: null },
 });
 
 const i18n = {
@@ -347,14 +353,104 @@ const i18n = {
 };
 
 const t = computed(() => i18n[props.lang] ?? i18n.en);
-const emit = defineEmits(["toggleTheme"]);
+const emit = defineEmits(["toggleTheme", "logout"]);
 
 const activeView = ref("kebun");
 const selectedMood = ref(props.initialMood?.mood ?? null);
-const streakDays = ref(4);
 
-// Reflections storage: array of {date, mood, trigger, wentWell, improve, insight, action}
+// ── Reflections storage ──
 const reflections = ref(JSON.parse(localStorage.getItem('innerly_reflections') || '[]'));
+
+// ── Streak logic ──
+function getTodayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function computeStreak(refs) {
+  const uniqueDates = [...new Set(refs.map(r => r.date))].sort().reverse();
+  if (uniqueDates.length === 0) return 0;
+  const today = getTodayKey();
+  const yd = new Date(); yd.setDate(yd.getDate() - 1);
+  const yesterday = `${yd.getFullYear()}-${String(yd.getMonth()+1).padStart(2,'0')}-${String(yd.getDate()).padStart(2,'0')}`;
+  // Streak only alive if reflected today or yesterday
+  if (uniqueDates[0] !== today && uniqueDates[0] !== yesterday) return 0;
+  let streak = 0;
+  let cursor = new Date(uniqueDates[0] + 'T00:00:00');
+  for (const d of uniqueDates) {
+    const diff = Math.round((cursor - new Date(d + 'T00:00:00')) / 86400000);
+    if (diff <= 1) { streak++; cursor = new Date(d + 'T00:00:00'); }
+    else break;
+  }
+  return streak;
+}
+
+const streakDays = ref(computeStreak(reflections.value));
+const openGardenTrigger = ref(0);
+
+// Watch pendingReflection prop — jalan tiap kali ada refleksi baru dari onboarding
+// Ini penting karena DashboardView tidak di-remount (key="dashboard" static)
+watch(() => props.pendingReflection, (newRef) => {
+  if (!newRef) return;
+  const dateKey = newRef.date;
+  const existingIdx = reflections.value.findIndex(r => r.date === dateKey);
+  if (existingIdx >= 0) {
+    reflections.value[existingIdx] = newRef;
+  } else {
+    reflections.value.push(newRef);
+  }
+  streakDays.value = computeStreak(reflections.value);
+  // Trigger garden popup otomatis setelah refleksi onboarding/baru masuk
+  activeView.value = "kebun";
+  openGardenTrigger.value++;
+}, { immediate: false });
+
+// Load reflections from database on mount
+onMounted(async () => {
+  const user = authService.getUser && authService.getUser();
+  const userId = user && (user._id || user.id);
+  let alreadyWateredToday = false;
+
+  if (userId) {
+    try {
+      const dbReflections = await reflectionService.getReflections(userId);
+      if (dbReflections && dbReflections.length > 0) {
+        const localReflections = reflections.value;
+        const merged = [...localReflections];
+        for (const dbRef of dbReflections) {
+          const existingIndex = merged.findIndex(r => r.date === dbRef.date);
+          if (existingIndex >= 0) {
+            merged[existingIndex] = dbRef;
+          } else {
+            merged.push(dbRef);
+          }
+        }
+        reflections.value = merged;
+        localStorage.setItem('innerly_reflections', JSON.stringify(merged));
+        streakDays.value = computeStreak(merged);
+      }
+    } catch (err) {
+      console.error("Failed to load reflections from database:", err);
+    }
+
+    // Cek apakah sudah siram hari ini
+    try {
+      const todayKey = new Date().toISOString().split('T')[0];
+      const res = await fetch(`/api/streak/${userId}`);
+      const data = await res.json();
+      if (data.last_watered_date) {
+        alreadyWateredToday = data.last_watered_date.split('T')[0] === todayKey;
+      }
+    } catch (e) {}
+  }
+
+  // Auto-open popup hanya jika belum siram hari ini
+  setTimeout(() => {
+    if (activeView.value === 'kebun' && !props.pendingReflection && !alreadyWateredToday) {
+      openGardenTrigger.value++;
+    }
+  }, 800);
+});
 
 const navItems = [
   {
@@ -454,22 +550,43 @@ const greeting = computed(() => t.value.greeting(props.userName));
 const displayName = computed(() => t.value.displayName(props.userName));
 
 function onJournalDone(data) {
-  streakDays.value = streakDays.value + 1;
-  // Save reflection with today's date
-  const today = new Date();
-  const dateKey = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+  const dateKey = getTodayKey();
   const newRef = {
     date: dateKey,
     mood: data?.moods?.[0] ?? data?.mood ?? '',
+    moods: data?.moods ?? (data?.mood ? [data.mood] : []),
     trigger: data?.trigger ?? '',
     wentWell: data?.wentWell ?? '',
     improve: data?.improve ?? '',
     insight: data?.insight ?? '',
     action: data?.action ?? '',
   };
-  reflections.value = [...reflections.value, newRef];
-  localStorage.setItem('innerly_reflections', JSON.stringify(reflections.value));
+  
+  // Check if reflection for this date already exists
+  const existingIndex = reflections.value.findIndex(r => r.date === dateKey);
+  if (existingIndex >= 0) {
+    reflections.value[existingIndex] = newRef;
+  } else {
+    reflections.value.push(newRef);
+  }
+  
+  const updated = reflections.value;
+  localStorage.setItem('innerly_reflections', JSON.stringify(updated));
+  
+  // Save to database
+  const user = authService.getUser && authService.getUser();
+  const userId = user && (user._id || user.id);
+  if (userId) {
+    reflectionService.saveReflection(userId, newRef).catch(err => {
+      console.error("Failed to save reflection to database:", err);
+    });
+  }
+  
+  // Recompute streak (only increments if first reflection today)
+  streakDays.value = computeStreak(updated);
   activeView.value = "kebun";
+  // Trigger garden popup to open so user can water their plant
+  openGardenTrigger.value++;
 }
 </script>
 
@@ -567,7 +684,10 @@ function onJournalDone(data) {
 .kebun-view {
   padding: 0 !important;
   gap: 0 !important;
-  overflow: hidden !important;
+  overflow: visible !important;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 /* ── Welcome banner ── */
