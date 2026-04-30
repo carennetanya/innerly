@@ -194,8 +194,10 @@
               <span class="kb-growth-daynum">{{ currentDay }}</span>
             </div>
             <div class="kb-watercan-wrap">
-              <span class="kb-watercan-hint">Water your plant 💧</span>
+              <span class="kb-watercan-hint" v-if="!hasWateredLocally">Water your plant 💧</span>
+              <span class="kb-watercan-hint kb-watercan-done" v-else>✅ Sudah disiram hari ini!</span>
               <img
+                v-if="!hasWateredLocally"
                 class="kb-growth-watercan"
                 :class="{ 'is-watering': isWatering }"
                 src="/water-can.png"
@@ -224,7 +226,7 @@
               <span class="kb-note kb-note-2">♫</span>
               <span class="kb-note kb-note-3">✦</span>
             </div>
-            <div class="kb-growth-plant-stage">
+            <div class="kb-growth-plant-stage" v-if="!isLoadingWateredState">
               <img v-if="plantStage === 'dirt'" src="/dirt.png" alt="dirt" class="kb-plant-img kb-plant-dirt" />
               <img v-else-if="plantStage === 'seed'" src="/seeds.png" alt="seed" class="kb-plant-img kb-plant-seed" />
               <img v-else-if="plantStage === 'sprout'" src="/leaf.png" alt="sprout" class="kb-plant-img kb-plant-sprout" />
@@ -419,19 +421,18 @@ const props = defineProps({
   pendingReflection: { type: Object, default: null },
 })
 
-const emit = defineEmits(['start-journal', 'logout'])
+const emit = defineEmits(['start-journal', 'logout', 'watered'])
 
 // Open garden popup when triggered from parent (after journal done)
 // Auto-open selalu muncul setiap kali ada trigger baru (setelah refleksi disimpan)
 watch(() => props.openGarden, (val) => {
-  if (val > 0) {
+  if (val > 0 && !hasWateredLocally.value) {
     setTimeout(() => { growthPanelOpen.value = true }, 600)
   }
 })
 
-// Auto-open growth panel when a new reflection is added (termasuk new user pertama kali)
 watch(() => props.pendingReflection, (newVal) => {
-  if (newVal) {
+  if (newVal && !hasWateredLocally.value) {
     setTimeout(() => { growthPanelOpen.value = true }, 600)
   }
 })
@@ -655,12 +656,21 @@ function showComeBackToast() {
   toastTimer = setTimeout(() => { showToast.value = false }, 2800)
 }
 
-// Watered state persisted to DB
+// Watered state persisted to DB + localStorage
 function getTodayKey() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
-const hasWateredLocally = ref(false);
+
+// Cek localStorage dulu (instant, tidak perlu tunggu DB)
+const todayKey = getTodayKey();
+const localWatered = localStorage.getItem('innerly_watered_date');
+// Kalau tanggal di localStorage bukan hari ini, hapus supaya tidak carryover ke hari berikutnya
+if (localWatered && localWatered !== todayKey) {
+  localStorage.removeItem('innerly_watered_date');
+}
+const hasWateredLocally = ref(localWatered === todayKey);
+const isLoadingWateredState = ref(false); // tidak perlu loading karena localStorage instant
 
 // ── Flower picker ──
 const showFlowerPicker = ref(false)
@@ -695,7 +705,7 @@ function onFlowerPickerClose() {
   tempFlower.value = null
 }
 
-// Load watered state from DB on mount
+// Load watered state - localStorage sudah di-set di atas, DB hanya untuk sync
 onMounted(async () => {
   const user = authService.getUser && authService.getUser();
   const userId = user && (user._id || user.id);
@@ -705,11 +715,12 @@ onMounted(async () => {
       const data = await res.json();
       if (data.last_watered_date) {
         const watered = data.last_watered_date.split('T')[0];
-        hasWateredLocally.value = watered === getTodayKey();
+        if (watered === getTodayKey()) {
+          hasWateredLocally.value = true;
+          localStorage.setItem('innerly_watered_date', getTodayKey());
+        }
       }
-    } catch (e) {
-      console.warn('Could not load watered state:', e);
-    }
+    } catch (e) {}
   }
 });
 
@@ -803,6 +814,7 @@ function triggerWatering() {
     isWatering.value = false
     justWatered.value = false
     hasWateredLocally.value = true
+    localStorage.setItem('innerly_watered_date', getTodayKey())
     // Save watered date to DB
     const user = authService.getUser && authService.getUser();
     const userId = user && (user._id || user.id);
@@ -813,6 +825,7 @@ function triggerWatering() {
         body: JSON.stringify({ date: getTodayKey() })
       }).catch(e => console.warn('Could not save watered date:', e));
     }
+    emit('watered')
     // Day 3 (streakDays >= 2) dan belum pernah pilih bunga → tampilkan flower picker
     if (props.streakDays >= 2 && !chosenFlower.value) {
       setTimeout(() => { showFlowerPicker.value = true }, 400)
@@ -905,10 +918,13 @@ watch(() => props.streakDays, (val) => {
 })
 
 function onLogout() {
-  // Bersihkan data user dari localStorage
+  // Bersihkan SEMUA data user dari localStorage
   try {
     localStorage.removeItem('innerly_user')
     localStorage.removeItem('innerly_reflections')
+    localStorage.removeItem('innerly_watered_date')
+    localStorage.removeItem('innerly_reminder')
+    localStorage.removeItem('innerly_chosen_flower')
   } catch {}
   profileOpen.value = false
   emit('logout')
@@ -1513,6 +1529,15 @@ function onPlantReflection() {
   text-align: center;
   white-space: nowrap;
 }
+.kb-watercan-done {
+  color: #4caf50;
+  font-size: 0.75rem;
+  padding: 6px 10px;
+  background: rgba(76,175,80,0.1);
+  border-radius: 12px;
+  border: 1.5px solid rgba(76,175,80,0.3);
+  margin-top: 8px;
+}
 .kb-growth-watercan {
   cursor: grab;
   touch-action: none;
@@ -1631,8 +1656,7 @@ function onPlantReflection() {
   opacity: 0;
   transform: scale(0.95);
 }
-</style>
-<style scoped>
+
 /* ── Growth Garden Panel ── */
 .kb-growth-overlay {
   position: fixed;

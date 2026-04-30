@@ -64,6 +64,7 @@
           :open-garden="openGardenTrigger"
           @start-journal="activeView = 'journal'"
           @logout="$emit('logout')"
+          @watered="alreadyWateredToday = true"
         />
       </div>
 
@@ -388,8 +389,14 @@ function computeStreak(refs) {
 const streakDays = ref(computeStreak(reflections.value));
 const openGardenTrigger = ref(0);
 
+// Track whether user already watered today — pakai localStorage supaya instant
+const _wateredDate = localStorage.getItem('innerly_watered_date');
+if (_wateredDate && _wateredDate !== getTodayKey()) {
+  localStorage.removeItem('innerly_watered_date');
+}
+const alreadyWateredToday = ref(_wateredDate === getTodayKey());
+
 // Watch pendingReflection prop — jalan tiap kali ada refleksi baru dari onboarding
-// Ini penting karena DashboardView tidak di-remount (key="dashboard" static)
 watch(() => props.pendingReflection, (newRef) => {
   if (!newRef) return;
   const dateKey = newRef.date;
@@ -400,16 +407,16 @@ watch(() => props.pendingReflection, (newRef) => {
     reflections.value.push(newRef);
   }
   streakDays.value = computeStreak(reflections.value);
-  // Trigger garden popup otomatis setelah refleksi onboarding/baru masuk
   activeView.value = "kebun";
-  openGardenTrigger.value++;
+  if (!alreadyWateredToday.value) {
+    openGardenTrigger.value++;
+  }
 }, { immediate: false });
 
 // Load reflections from database on mount
 onMounted(async () => {
   const user = authService.getUser && authService.getUser();
   const userId = user && (user._id || user.id);
-  let alreadyWateredToday = false;
 
   if (userId) {
     try {
@@ -418,11 +425,22 @@ onMounted(async () => {
         const localReflections = reflections.value;
         const merged = [...localReflections];
         for (const dbRef of dbReflections) {
-          const existingIndex = merged.findIndex(r => r.date === dbRef.date);
+          // Normalize DB keys (went_well) ke format lokal (wentWell)
+          const normalized = {
+            date: dbRef.date ? dbRef.date.split('T')[0] : dbRef.date,
+            mood: dbRef.mood || '',
+            moods: dbRef.moods || (dbRef.mood ? [dbRef.mood] : []),
+            trigger: dbRef.trigger || '',
+            wentWell: dbRef.went_well || dbRef.wentWell || '',
+            improve: dbRef.improve || '',
+            insight: dbRef.insight || '',
+            action: dbRef.action || '',
+          };
+          const existingIndex = merged.findIndex(r => r.date === normalized.date);
           if (existingIndex >= 0) {
-            merged[existingIndex] = dbRef;
+            merged[existingIndex] = normalized;
           } else {
-            merged.push(dbRef);
+            merged.push(normalized);
           }
         }
         reflections.value = merged;
@@ -432,24 +450,12 @@ onMounted(async () => {
     } catch (err) {
       console.error("Failed to load reflections from database:", err);
     }
-
-    // Cek apakah sudah siram hari ini
-    try {
-      const todayKey = new Date().toISOString().split('T')[0];
-      const res = await fetch(`/api/streak/${userId}`);
-      const data = await res.json();
-      if (data.last_watered_date) {
-        alreadyWateredToday = data.last_watered_date.split('T')[0] === todayKey;
-      }
-    } catch (e) {}
   }
 
   // Auto-open popup hanya jika belum siram hari ini
-  setTimeout(() => {
-    if (activeView.value === 'kebun' && !props.pendingReflection && !alreadyWateredToday) {
-      openGardenTrigger.value++;
-    }
-  }, 800);
+  if (activeView.value === 'kebun' && !props.pendingReflection && !alreadyWateredToday.value) {
+    setTimeout(() => { openGardenTrigger.value++; }, 800);
+  }
 });
 
 const navItems = [
@@ -585,8 +591,10 @@ function onJournalDone(data) {
   // Recompute streak (only increments if first reflection today)
   streakDays.value = computeStreak(updated);
   activeView.value = "kebun";
-  // Trigger garden popup to open so user can water their plant
-  openGardenTrigger.value++;
+  // Trigger garden popup hanya jika belum siram hari ini
+  if (!alreadyWateredToday.value) {
+    openGardenTrigger.value++;
+  }
 }
 </script>
 

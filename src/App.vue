@@ -146,6 +146,11 @@ function saveUser(name, language) {
 
 function onAuthSuccess(user) {
   showAuthModal.value = false;
+  // Update userName dari data user yang login
+  if (user && (user.username || user.name)) {
+    userName.value = user.username || user.name;
+    saveUser(userName.value, lang.value);
+  }
   // Simpan refleksi onboarding jika ada (user baru register setelah isi refleksi pertama)
   if (summaryData.value?.mood || summaryData.value?.trigger) {
     try {
@@ -274,7 +279,16 @@ function onLogout() {
   initialAction.value = null
   summaryData.value = {}
   insightContext.value = {}
-  // Kembali ke loading screen (pemilihan dark/light mode)
+  pendingReflection.value = null
+  // Clear semua localStorage supaya reminder, watered, refleksi tidak bocor ke session berikutnya
+  try {
+    localStorage.removeItem('innerly_user')
+    localStorage.removeItem('innerly_reflections')
+    localStorage.removeItem('innerly_watered_date')
+    localStorage.removeItem('innerly_reminder')
+    localStorage.removeItem('innerly_chosen_flower')
+  } catch {}
+  // Kembali ke loading screen
   stage.value = "loading"
 }
 
