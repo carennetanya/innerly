@@ -477,6 +477,7 @@ function onPageKeydown(idx, e) {
 }
 
 function open() {
+  if (visible.value) return; // sudah terbuka, jangan reset
   visible.value = true;
   currentPage.value = 1;
   pages.value = [""];

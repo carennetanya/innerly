@@ -61,4 +61,19 @@ router.post("/:userId/water", async (req, res) => {
   }
 });
 
+// POST /api/streak/:userId/flower
+// { flower: "/happy1.png" }
+router.post("/:userId/flower", async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { flower } = req.body;
+    if (!flower) return res.status(400).json({ error: "flower is required" });
+
+    await Streak.setChosenFlower(userId, flower);
+    res.json({ ok: true, flower });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;

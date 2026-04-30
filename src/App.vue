@@ -75,6 +75,7 @@
         :initial-mood="initialMood"
         :lang="lang"
         :pending-reflection="pendingReflection"
+        :db-reload-trigger="dbReloadTrigger"
         @toggle-theme="isDark = !isDark"
         @logout="onLogout"
       />
@@ -128,6 +129,7 @@ const curtainVisible = ref(false);
 const lang = ref("en"); // default english, will be set by GreetingScreen
 const showAuthModal = ref(false);
 const pendingReflection = ref(null); // refleksi onboarding yang belum tersimpan ke dashboard
+const dbReloadTrigger = ref(0); // increment to force DashboardView reload from DB
 
 // --- Returning user helpers ---
 function getSavedUser() {
@@ -173,16 +175,26 @@ function onAuthSuccess(user) {
       localStorage.setItem('innerly_reflections', JSON.stringify(updated))
       pendingReflection.value = newRef
 
-      // Simpan ke database
+      // Simpan ke database (with retry)
       if (user && user.id) {
-        reflectionService.saveReflection(user.id, newRef).catch(err => {
-          console.error("Failed to save onboarding reflection to database:", err)
-        })
+        const saveWithRetry = async (uid, ref) => {
+          try {
+            await reflectionService.saveReflection(uid, ref);
+          } catch (err) {
+            console.error('Failed to save onboarding reflection, retrying...', err);
+            setTimeout(async () => {
+              try { await reflectionService.saveReflection(uid, ref); } catch {}
+            }, 2000);
+          }
+        };
+        saveWithRetry(user.id, newRef);
       }
     } catch {}
   }
   // After auth (register or login), go directly to dashboard (GardenView)
   stage.value = "dashboard";
+  // Trigger DashboardView to reload reflections from DB with the now-authenticated user
+  dbReloadTrigger.value++;
 }
 
 async function onLoadingDone(darkState, skipIntro = false) {
@@ -316,13 +328,21 @@ function onSummaryDone() {
     // Set pendingReflection agar DashboardView langsung tampilkan bunga tanpa reload
     pendingReflection.value = newRef
 
-    // Simpan ke database jika user sudah login
-    const user = authService.getUser && authService.getUser()
+    // Simpan ke database jika user sudah login (with retry)
+    const user = authService.getUser()
     const userId = user?.id || user?._id
     if (userId) {
-      reflectionService.saveReflection(userId, newRef).catch(err => {
-        console.error("Failed to save reflection to database:", err)
-      })
+      const saveWithRetry = async (uid, ref) => {
+        try {
+          await reflectionService.saveReflection(uid, ref);
+        } catch (err) {
+          console.error('Failed to save reflection to database, retrying...', err);
+          setTimeout(async () => {
+            try { await reflectionService.saveReflection(uid, ref); } catch {}
+          }, 2000);
+        }
+      };
+      saveWithRetry(userId, newRef);
     }
   } catch {}
   stage.value = 'dashboard'

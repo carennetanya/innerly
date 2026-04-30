@@ -109,42 +109,23 @@
           <!-- Tanah sebagai background, ukuran besar -->
           <img src="/dirt.png" alt="dirt" class="kb-dirt-img kb-dirt-img-large" style="width:90px;height:55px;object-fit:contain;" />
           <transition-group name="fade-flower" tag="div" class="kb-flower-group">
-            <template v-for="(ref, ri) in getDayReflections(day)" :key="ri">
-              <!-- Show all moods as flowers if moods array exists -->
-              <template v-if="ref.moods && ref.moods.length > 0">
-                <div
-                  v-for="(moodLabel, mi) in ref.moods"
-                  :key="ri + '-' + mi"
-                  class="kb-flower-wrap kb-flower-on-dirt"
-                  @click.stop="openPopup(day, ri)"
-                  :title="moodLabel"
-                >
-                  <img
-                    v-if="getMoodImage(moodLabel)"
-                    :src="getMoodImage(moodLabel)"
-                    :alt="moodLabel"
-                    class="kb-mood-img kb-mood-img-large fade-flower-item"
-                    style="width:72px;height:72px;"
-                  />
-                  <span v-else class="kb-flower-emoji fade-flower-item">🌸</span>
-                </div>
-              </template>
-              <!-- Fallback: single mood -->
+            <template v-for="(flower, idx) in getDayFlowers(day).slice(0, 3)" :key="'flower-' + idx">
               <div
-                v-else
                 class="kb-flower-wrap kb-flower-on-dirt"
-                @click.stop="openPopup(day, ri)"
+                @click.stop="openPopup(day, flower.refIdx)"
+                :title="flower.label"
               >
                 <img
-                  v-if="getMoodImage(ref.mood)"
-                  :src="getMoodImage(ref.mood)"
-                  :alt="ref.mood"
+                  v-if="flower.img"
+                  :src="flower.img"
+                  :alt="flower.label"
                   class="kb-mood-img kb-mood-img-large fade-flower-item"
                   style="width:72px;height:72px;"
                 />
-                <span v-else class="kb-flower-emoji fade-flower-item">🌱</span>
+                <span v-else class="kb-flower-emoji fade-flower-item">{{ flower.emoji }}</span>
               </div>
             </template>
+            <span v-if="getDayFlowers(day).length > 3" class="kb-flower-more">+{{ getDayFlowers(day).length - 3 }}</span>
           </transition-group>
         </div>
 
@@ -270,7 +251,14 @@
           <!-- Toast: come back tomorrow -->
           <Transition name="toast-up">
             <div v-if="showToast" class="kb-tomorrow-toast">
-              🌿 Come back tomorrow to water your plant!
+              🌿 {{ lang === 'id' ? 'Datang lagi besok untuk menyiram tanamanmu!' : 'Come back tomorrow to water your plant!' }}
+            </div>
+          </Transition>
+
+          <!-- Toast: reflection required -->
+          <Transition name="toast-up">
+            <div v-if="showReflectionToast" class="kb-reflection-toast">
+              📝 {{ lang === 'id' ? 'Silakan buat refleksi untuk hari ini dulu, baru bisa menyiram!' : 'Please make a reflection for today first, then you can water!' }}
             </div>
           </Transition>
 
@@ -418,7 +406,9 @@ const props = defineProps({
   streakDays: { type: Number, default: 0 },
   openGarden: { type: Number, default: 0 },
   userName: { type: String, default: '' },
+  userId: { type: [String, Number], default: null },
   pendingReflection: { type: Object, default: null },
+  justRegistered: { type: Boolean, default: false }, // New user from onboarding
 })
 
 const emit = defineEmits(['start-journal', 'logout', 'watered'])
@@ -503,13 +493,12 @@ function handleOutsideClick(e) {
 onMounted(() => {
   document.addEventListener('mousedown', handleOutsideClick)
   // Load user profile from auth service
-  const user = authService.getUser && authService.getUser()
+  const user = authService.getUser()
   if (user) {
     userEmail.value = user.email || 'user@innerly.app'
     userUsername.value = user.username || ''
   }
 })
-onUnmounted(() => document.removeEventListener('mousedown', handleOutsideClick))
 
 const today = new Date()
 const viewYear = ref(today.getFullYear())
@@ -570,6 +559,39 @@ function dateKey(day) {
 function getDayReflections(day) {
   const key = dateKey(day)
   return props.reflections.filter(r => r.date === key)
+}
+
+// Helper to flatten all flowers for a day (max 3 shown)
+function getDayFlowers(day) {
+  const refs = getDayReflections(day)
+  const flowers = []
+  refs.forEach((ref, refIdx) => {
+    if (ref.moods && ref.moods.length > 0) {
+      ref.moods.forEach((moodLabel) => {
+        flowers.push({
+          img: getMoodImage(moodLabel),
+          label: moodLabel,
+          emoji: '🌸',
+          refIdx,
+        })
+      })
+    } else if (ref.mood) {
+      flowers.push({
+        img: getMoodImage(ref.mood),
+        label: ref.mood,
+        emoji: '🌱',
+        refIdx,
+      })
+    } else {
+      flowers.push({
+        img: null,
+        label: '',
+        emoji: '🌱',
+        refIdx,
+      })
+    }
+  })
+  return flowers
 }
 
 // Mood label → image file key (same as /public/*.png)
@@ -648,12 +670,19 @@ const plantAreaRef = ref(null)
 
 // Toast for "come back tomorrow"
 const showToast = ref(false)
+const showReflectionToast = ref(false)
 let toastTimer = null
 
 function showComeBackToast() {
   showToast.value = true
   if (toastTimer) clearTimeout(toastTimer)
   toastTimer = setTimeout(() => { showToast.value = false }, 2800)
+}
+
+function showReflectionRequiredToast() {
+  showReflectionToast.value = true
+  if (toastTimer) clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => { showReflectionToast.value = false }, 3500)
 }
 
 // Watered state persisted to DB + localStorage
@@ -675,7 +704,7 @@ const isLoadingWateredState = ref(false); // tidak perlu loading karena localSto
 // ── Flower picker ──
 const showFlowerPicker = ref(false)
 const tempFlower = ref(null)
-const chosenFlower = ref(localStorage.getItem('innerly_chosen_flower') || null)
+const chosenFlower = ref(null) // Will be loaded from DB in onMounted; fallback to localStorage
 
 const flowerOptions = [
   { key: 'happy',      img: '/happy1.png',      label: 'Happy',      labelId: 'Senang'      },
@@ -695,6 +724,21 @@ function confirmFlower() {
   chosenFlower.value = tempFlower.value
   localStorage.setItem('innerly_chosen_flower', tempFlower.value)
   showFlowerPicker.value = false
+  // Save chosen flower to DB so it persists across logout/login
+  const userId = props.userId
+  if (userId) {
+    console.log('[Innerly] Saving chosen flower to DB:', tempFlower.value, 'for userId:', userId);
+    fetch(`/api/streak/${userId}/flower`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ flower: tempFlower.value })
+    })
+      .then(res => res.json())
+      .then(data => console.log('[Innerly] Flower saved to DB:', data))
+      .catch(e => console.error('[Innerly] FAILED to save flower to DB:', e));
+  } else {
+    console.warn('[Innerly] confirmFlower: userId is null, cannot save to DB. User must be logged in.');
+  }
   tempFlower.value = null
 }
 
@@ -705,24 +749,50 @@ function onFlowerPickerClose() {
   tempFlower.value = null
 }
 
-// Load watered state - localStorage sudah di-set di atas, DB hanya untuk sync
-onMounted(async () => {
-  const user = authService.getUser && authService.getUser();
-  const userId = user && (user._id || user.id);
-  if (userId) {
-    try {
-      const res = await fetch(`/api/streak/${userId}`);
-      const data = await res.json();
-      if (data.last_watered_date) {
-        const watered = data.last_watered_date.split('T')[0];
-        if (watered === getTodayKey()) {
-          hasWateredLocally.value = true;
-          localStorage.setItem('innerly_watered_date', getTodayKey());
-        }
+// Load watered state + chosen flower from DB
+async function loadUserDataFromDB(userId) {
+  if (!userId) return;
+  try {
+    const res = await fetch(`/api/streak/${userId}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    console.log('[Innerly] Loaded streak data from DB:', data);
+    // Sync watered state
+    if (data.last_watered_date) {
+      const watered = data.last_watered_date.split('T')[0];
+      if (watered === getTodayKey()) {
+        hasWateredLocally.value = true;
+        localStorage.setItem('innerly_watered_date', getTodayKey());
       }
-    } catch (e) {}
+    }
+    // Load chosen flower — DB is source of truth, overrides localStorage
+    if (data.chosen_flower) {
+      chosenFlower.value = data.chosen_flower;
+      localStorage.setItem('innerly_chosen_flower', data.chosen_flower);
+      console.log('[Innerly] Restored chosen flower from DB:', data.chosen_flower);
+    }
+  } catch (e) {
+    console.warn('[Innerly] loadUserDataFromDB error:', e);
   }
+}
+
+onMounted(async () => {
+  // Load from localStorage first (instant fallback while waiting for DB)
+  const localFlower = localStorage.getItem('innerly_chosen_flower');
+  if (localFlower) chosenFlower.value = localFlower;
+
+  // Load from DB (props.userId mungkin sudah tersedia saat mount)
+  await loadUserDataFromDB(props.userId);
 });
+
+// Watch userId — jika saat mount userId masih null (belum login),
+// watch ini akan trigger load dari DB begitu userId tersedia
+watch(() => props.userId, async (newId, oldId) => {
+  if (newId && newId !== oldId) {
+    console.log('[Innerly] userId changed, reloading from DB:', newId);
+    await loadUserDataFromDB(newId);
+  }
+}, { immediate: false });
 
 // Touch drag state
 let touchOffsetX = 0
@@ -800,11 +870,26 @@ function onWatercanTouchEnd(e) {
 function onWatercanDragStart(e) { e.preventDefault() }
 function onWaterDrop() {}
 
+// Check if user has made reflection today
+function hasReflectionToday() {
+  const today = getTodayKey()
+  return props.reflections && props.reflections.some(r => {
+    const refDate = r.date ? r.date.split('T')[0] : r.date
+    return refDate === today
+  })
+}
+
 function triggerWatering() {
   if (isWatering.value) return
   // Block if already watered today
   if (hasWateredLocally.value) {
     showComeBackToast()
+    return
+  }
+  // Block if no reflection today - user must make reflection first
+  // Exception: new users who just registered (they made reflection during onboarding)
+  if (!props.justRegistered && !hasReflectionToday()) {
+    showReflectionRequiredToast()
     return
   }
   // Animasi siram
@@ -814,16 +899,21 @@ function triggerWatering() {
     isWatering.value = false
     justWatered.value = false
     hasWateredLocally.value = true
-    localStorage.setItem('innerly_watered_date', getTodayKey())
+    const todayDate = getTodayKey()
+    localStorage.setItem('innerly_watered_date', todayDate)
     // Save watered date to DB
-    const user = authService.getUser && authService.getUser();
-    const userId = user && (user._id || user.id);
+    const userId = props.userId;
     if (userId) {
       fetch(`/api/streak/${userId}/water`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date: getTodayKey() })
-      }).catch(e => console.warn('Could not save watered date:', e));
+        body: JSON.stringify({ date: todayDate })
+      })
+        .then(res => res.json())
+        .then(data => console.log('[Innerly] Watered saved to DB:', data))
+        .catch(e => console.warn('[Innerly] Could not save watered date:', e));
+    } else {
+      console.warn('[Innerly] triggerWatering: userId not found (user not logged in), skipping DB save');
     }
     emit('watered')
     // Day 3 (streakDays >= 2) dan belum pernah pilih bunga → tampilkan flower picker
@@ -1295,6 +1385,7 @@ function onPlantReflection() {
   cursor: pointer;
   transition: background 0.15s;
   position: relative;
+  overflow: hidden;
 }
 .kb-cell:hover {
   background: var(--bg-base);
@@ -1345,6 +1436,22 @@ function onPlantReflection() {
   align-items: center;
   justify-content: center;
   width: 100%;
+  overflow: hidden;
+}
+.kb-flower-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  max-width: 220px;
+  overflow: hidden;
+  align-items: center;
+}
+.kb-flower-more {
+  font-size: 1.1rem;
+  color: #c084fc;
+  margin-left: 4px;
+  font-weight: 600;
+  align-self: center;
 }
 .kb-flower-emoji {
   font-size: 1.6rem;
@@ -1456,6 +1563,18 @@ function onPlantReflection() {
   box-shadow: 0 6px 24px rgba(76, 175, 80, 0.5);
   transition: transform 0.18s, box-shadow 0.18s;
   position: relative;
+  animation: fab-blink 2s ease-in-out infinite;
+}
+
+@keyframes fab-blink {
+  0%, 100% {
+    box-shadow: 0 6px 24px rgba(76, 175, 80, 0.5);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 6px 32px rgba(76, 175, 80, 0.8), 0 0 20px rgba(76, 175, 80, 0.4);
+    transform: scale(1.05);
+  }
 }
 .kb-fab:hover {
   transform: scale(1.1);
@@ -2032,6 +2151,20 @@ function onPlantReflection() {
   border-radius: 14px;
   text-align: center;
   box-shadow: 0 4px 16px rgba(240,208,128,0.3);
+  margin-top: -6px;
+}
+
+/* ── Toast: reflection required ── */
+.kb-reflection-toast {
+  background: #ffeef0;
+  border: 1.5px solid #f5a6b0;
+  color: #8b3a3a;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 10px 16px;
+  border-radius: 14px;
+  text-align: center;
+  box-shadow: 0 4px 16px rgba(245,166,166,0.3);
   margin-top: -6px;
 }
 

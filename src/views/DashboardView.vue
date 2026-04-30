@@ -60,8 +60,10 @@
           :reflections="reflections"
           :streak-days="streakDays"
           :user-name="props.userName"
+          :user-id="currentUserId"
           :pending-reflection="props.pendingReflection"
           :open-garden="openGardenTrigger"
+          :just-registered="!!props.pendingReflection"
           @start-journal="activeView = 'journal'"
           @logout="$emit('logout')"
           @watered="alreadyWateredToday = true"
@@ -227,6 +229,7 @@ import { ref, computed, onMounted, watch } from "vue";
 import GuidedJournal from "../components/GuidedJournal.vue";
 import GardenView from "../components/GardenView.vue";
 import { reflectionService } from "../services/reflection.js";
+import { commitmentService } from "../services/commitment.js";
 import { authService } from "../services/auth.js";
 
 const props = defineProps({
@@ -236,6 +239,7 @@ const props = defineProps({
   initialMood: { type: Object, default: null },
   lang: { type: String, default: "en" },
   pendingReflection: { type: Object, default: null },
+  dbReloadTrigger: { type: Number, default: 0 },
 });
 
 const i18n = {
@@ -356,11 +360,17 @@ const i18n = {
 const t = computed(() => i18n[props.lang] ?? i18n.en);
 const emit = defineEmits(["toggleTheme", "logout"]);
 
+// ── Resolve userId — support both auth flow (authService) and legacy onboarding ──
+const currentUserId = computed(() => {
+  const user = authService.getUser();
+  return (user && (user.id || user._id)) || null;
+});
+
 const activeView = ref("kebun");
 const selectedMood = ref(props.initialMood?.mood ?? null);
 
 // ── Reflections storage ──
-const reflections = ref(JSON.parse(localStorage.getItem('innerly_reflections') || '[]'));
+const reflections = ref([]);
 
 // ── Streak logic ──
 function getTodayKey() {
@@ -369,19 +379,44 @@ function getTodayKey() {
 }
 
 function computeStreak(refs) {
-  const uniqueDates = [...new Set(refs.map(r => r.date))].sort().reverse();
+  // Deduplicate: keep only the first reflection for each date
+  const uniqueReflections = [];
+  const seenDates = new Set();
+  for (const ref of refs) {
+    const dateKey = ref.date ? ref.date.split('T')[0] : ref.date;
+    if (!seenDates.has(dateKey)) {
+      seenDates.add(dateKey);
+      uniqueReflections.push({ ...ref, date: dateKey });
+    }
+  }
+  
+  // Get unique dates, sorted ascending (oldest to newest)
+  const uniqueDates = [...new Set(uniqueReflections.map(r => r.date))].sort();
   if (uniqueDates.length === 0) return 0;
+  
   const today = getTodayKey();
   const yd = new Date(); yd.setDate(yd.getDate() - 1);
   const yesterday = `${yd.getFullYear()}-${String(yd.getMonth()+1).padStart(2,'0')}-${String(yd.getDate()).padStart(2,'0')}`;
+  
   // Streak only alive if reflected today or yesterday
-  if (uniqueDates[0] !== today && uniqueDates[0] !== yesterday) return 0;
-  let streak = 0;
-  let cursor = new Date(uniqueDates[0] + 'T00:00:00');
-  for (const d of uniqueDates) {
-    const diff = Math.round((cursor - new Date(d + 'T00:00:00')) / 86400000);
-    if (diff <= 1) { streak++; cursor = new Date(d + 'T00:00:00'); }
-    else break;
+  if (uniqueDates[uniqueDates.length - 1] !== today && uniqueDates[uniqueDates.length - 1] !== yesterday) {
+    return 0;
+  }
+  
+  // Count consecutive days from the most recent
+  let streak = 1;
+  let cursor = new Date(uniqueDates[uniqueDates.length - 1] + 'T00:00:00');
+  
+  // Loop backwards from the most recent date
+  for (let i = uniqueDates.length - 2; i >= 0; i--) {
+    const d = new Date(uniqueDates[i] + 'T00:00:00');
+    const diff = Math.round((cursor - d) / 86400000);
+    if (diff === 1) {
+      streak++;
+      cursor = d;
+    } else {
+      break;
+    }
   }
   return streak;
 }
@@ -413,19 +448,72 @@ watch(() => props.pendingReflection, (newRef) => {
   }
 }, { immediate: false });
 
+// Watch dbReloadTrigger — reload reflections from DB when user logs in
+watch(() => props.dbReloadTrigger, async (newVal) => {
+  if (newVal === 0) return;
+  const user = authService.getUser();
+  const userId = user && (user._id || user.id);
+  if (!userId) return;
+  try {
+    const dbReflections = await reflectionService.getReflections(userId);
+    if (dbReflections && dbReflections.length > 0) {
+      const localReflections = reflections.value;
+      const merged = [];
+      for (const dbRef of dbReflections) {
+        const normalized = {
+          date: dbRef.date ? dbRef.date.split('T')[0] : dbRef.date,
+          mood: dbRef.mood || '',
+          moods: dbRef.moods || (dbRef.mood ? [dbRef.mood] : []),
+          trigger: dbRef.trigger || '',
+          wentWell: dbRef.went_well || dbRef.wentWell || '',
+          improve: dbRef.improve || '',
+          insight: dbRef.insight || '',
+          action: dbRef.action || '',
+        };
+        merged.push(normalized);
+      }
+      // Overlay local data (including any just-saved reflection) on top
+      for (const localRef of localReflections) {
+        const localDate = localRef.date ? localRef.date.split('T')[0] : localRef.date;
+        const existingIndex = merged.findIndex(r => r.date === localDate);
+        const normalizedLocal = { ...localRef, date: localDate };
+        if (existingIndex >= 0) {
+          merged[existingIndex] = normalizedLocal;
+        } else {
+          merged.push(normalizedLocal);
+        }
+      }
+      reflections.value = merged;
+      streakDays.value = computeStreak(merged);
+    }
+  } catch (err) {
+    console.error('Failed to reload reflections from database:', err);
+  }
+}, { immediate: false });
+
 // Load reflections from database on mount
 onMounted(async () => {
-  const user = authService.getUser && authService.getUser();
+  const user = authService.getUser();
   const userId = user && (user._id || user.id);
+
+  // Reset streak to 0 for new users (no userId = new user)
+  if (!userId) {
+    streakDays.value = 0;
+    reflections.value = [];
+    return;
+  }
 
   if (userId) {
     try {
       const dbReflections = await reflectionService.getReflections(userId);
       if (dbReflections && dbReflections.length > 0) {
+        // Start from DB as base, then overlay local data on top
+        // This ensures newly saved reflections (pendingReflection) are not overwritten
         const localReflections = reflections.value;
-        const merged = [...localReflections];
+        const merged = [];
+
+        // Add all DB reflections (normalized)
         for (const dbRef of dbReflections) {
-          // Normalize DB keys (went_well) ke format lokal (wentWell)
           const normalized = {
             date: dbRef.date ? dbRef.date.split('T')[0] : dbRef.date,
             mood: dbRef.mood || '',
@@ -436,15 +524,23 @@ onMounted(async () => {
             insight: dbRef.insight || '',
             action: dbRef.action || '',
           };
-          const existingIndex = merged.findIndex(r => r.date === normalized.date);
+          merged.push(normalized);
+        }
+
+        // Overlay local reflections on top (local data is more recent/authoritative)
+        for (const localRef of localReflections) {
+          const localDate = localRef.date ? localRef.date.split('T')[0] : localRef.date;
+          const existingIndex = merged.findIndex(r => r.date === localDate);
+          const normalizedLocal = { ...localRef, date: localDate };
           if (existingIndex >= 0) {
-            merged[existingIndex] = normalized;
+            // Local data wins — it may contain just-saved reflection not yet in DB
+            merged[existingIndex] = normalizedLocal;
           } else {
-            merged.push(normalized);
+            merged.push(normalizedLocal);
           }
         }
+
         reflections.value = merged;
-        localStorage.setItem('innerly_reflections', JSON.stringify(merged));
         streakDays.value = computeStreak(merged);
       }
     } catch (err) {
@@ -579,13 +675,25 @@ function onJournalDone(data) {
   const updated = reflections.value;
   localStorage.setItem('innerly_reflections', JSON.stringify(updated));
   
-  // Save to database
-  const user = authService.getUser && authService.getUser();
+  // Save to database (with retry once on failure)
+  const user = authService.getUser();
   const userId = user && (user._id || user.id);
   if (userId) {
-    reflectionService.saveReflection(userId, newRef).catch(err => {
-      console.error("Failed to save reflection to database:", err);
-    });
+    const trySave = async () => {
+      try {
+        await reflectionService.saveReflection(userId, newRef);
+      } catch (err) {
+        console.error('Failed to save reflection to database, retrying...', err);
+        setTimeout(async () => {
+          try {
+            await reflectionService.saveReflection(userId, newRef);
+          } catch (err2) {
+            console.error('Retry also failed:', err2);
+          }
+        }, 2000);
+      }
+    };
+    trySave();
   }
   
   // Recompute streak (only increments if first reflection today)

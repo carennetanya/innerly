@@ -56,7 +56,7 @@
         v-if="showPhrases"
         class="gs-skip-text"
         :data-dark="isDark"
-        @click="emit('done', selectedLang)"
+        @click="emitDoneOnce(selectedLang)"
       >
         Lewati Intro ↗
       </span>
@@ -116,6 +116,13 @@ const phrases = ref([]);
 const currentIndex = ref(0);
 const current = ref(null);
 const showPhrases = ref(false);
+const hasEmittedDone = ref(false);
+
+function emitDoneOnce(lang) {
+  if (hasEmittedDone.value) return;
+  hasEmittedDone.value = true;
+  emit("done", lang);
+}
 
 function chooseLang(lang) {
   selectedLang.value = lang;
@@ -135,7 +142,7 @@ function chooseLang(lang) {
         current.value = phrases.value[i];
         setTimeout(next, i === phrases.value.length - 1 ? 2200 : 2800);
       } else {
-        setTimeout(() => emit("done", lang), 800);
+        setTimeout(() => emitDoneOnce(lang), 800);
       }
     };
     setTimeout(next, 2800);

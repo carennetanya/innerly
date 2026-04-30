@@ -643,7 +643,7 @@ async function finishReflection() {
     localStorage.setItem('innerly_reminder', JSON.stringify(reminderData));
     // Save to DB
     try {
-      const user = authService.getUser && authService.getUser();
+      const user = authService.getUser();
       if (user && user.id) {
         const saved = await commitmentService.saveCommitment(user.id, reminderData);
         // Store DB id for later mark-done
@@ -669,7 +669,7 @@ async function saveReminder() {
     };
     localStorage.setItem('innerly_reminder', JSON.stringify(reminderData));
     try {
-      const user = authService.getUser && authService.getUser();
+      const user = authService.getUser();
       if (user && user.id) {
         const saved = await commitmentService.saveCommitment(user.id, reminderData);
         localStorage.setItem('innerly_reminder', JSON.stringify({ ...reminderData, dbId: saved.id }));
