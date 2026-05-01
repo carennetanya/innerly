@@ -15,6 +15,7 @@
         key="loading"
         :audio-el="globalAudio"
         @done="onLoadingDone"
+        @show-login="onShowLoginFromLoading"
       />
       <GreetingScreen
         v-else-if="stage === 'greeting'"
@@ -64,7 +65,7 @@
         :data="summaryData"
         @done="onSummaryDone"
         @new="onStartNew"
-        @show-auth="showAuthModal = true"
+        @show-auth="onShowRegisterFromSummary"
       />
       <DashboardView
         v-else
@@ -91,7 +92,7 @@
     <AuthModal
       :visible="showAuthModal"
       :is-dark="isDark"
-      initial-mode="register"
+      :initial-mode="authModalMode"
       @close="showAuthModal = false"
       @success="onAuthSuccess"
     />
@@ -128,6 +129,7 @@ const nameModalRef = ref(null);
 const curtainVisible = ref(false);
 const lang = ref("en"); // default english, will be set by GreetingScreen
 const showAuthModal = ref(false);
+const authModalMode = ref("register"); // 'register' or 'login'
 const pendingReflection = ref(null); // refleksi onboarding yang belum tersimpan ke dashboard
 const dbReloadTrigger = ref(0); // increment to force DashboardView reload from DB
 
@@ -146,6 +148,19 @@ function saveUser(name, language) {
   } catch {}
 }
 
+function onShowLoginFromLoading() {
+  // Called from LoadingScreen when user clicks "Sudah punya akun? Masuk"
+  // We need to show auth modal with login mode even from loading screen
+  // First set stage to something that shows AuthModal
+  authModalMode.value = "login";
+  showAuthModal.value = true;
+}
+
+function onShowRegisterFromSummary() {
+  authModalMode.value = "register";
+  showAuthModal.value = true;
+}
+
 function onAuthSuccess(user) {
   showAuthModal.value = false;
   // Update userName dari data user yang login
@@ -153,8 +168,11 @@ function onAuthSuccess(user) {
     userName.value = user.username || user.name;
     saveUser(userName.value, lang.value);
   }
+
+  const isLoginFlow = authModalMode.value === "login";
+
   // Simpan refleksi onboarding jika ada (user baru register setelah isi refleksi pertama)
-  if (summaryData.value?.mood || summaryData.value?.trigger) {
+  if (!isLoginFlow && (summaryData.value?.mood || summaryData.value?.trigger)) {
     try {
       const today = new Date()
       const dateKey = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`
@@ -191,10 +209,13 @@ function onAuthSuccess(user) {
       }
     } catch {}
   }
-  // After auth (register or login), go directly to dashboard (GardenView)
+
+  // After auth, go to dashboard
   stage.value = "dashboard";
   // Trigger DashboardView to reload reflections from DB with the now-authenticated user
   dbReloadTrigger.value++;
+  // Reset auth mode back to register for next time
+  authModalMode.value = "register";
 }
 
 async function onLoadingDone(darkState, skipIntro = false) {
@@ -343,9 +364,19 @@ function onSummaryDone() {
         }
       };
       saveWithRetry(userId, newRef);
+      // User already logged in, go directly to dashboard
+      stage.value = 'dashboard'
+    } else {
+      // User belum login → tampilkan register modal
+      // summaryData sudah berisi semua data refleksi, akan disimpan saat register berhasil
+      authModalMode.value = "register";
+      showAuthModal.value = true;
+      // Stage sementara ke summary agar modal terlihat
+      // Modal akan handle navigation ke dashboard setelah register
     }
-  } catch {}
-  stage.value = 'dashboard'
+  } catch {
+    stage.value = 'dashboard'
+  }
 }
 
 function onStartNew() {

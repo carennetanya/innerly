@@ -118,6 +118,13 @@
           Start Your Inner Space
         </button>
 
+        <Transition name="skip-fade">
+          <div v-if="phase >= 6" class="ls-login-wrap">
+            <button class="ls-login-btn" :class="{ 'is-dark': isDark }" @click="handleLoginClick">
+              Sudah punya akun? <strong>Masuk</strong>
+            </button>
+          </div>
+        </Transition>
 
       </div>
 
@@ -202,7 +209,7 @@ import { authService } from "../services/auth.js";
 import { commitmentService } from "../services/commitment.js";
 
 const props = defineProps({ audioEl: Object });
-const emit = defineEmits(["done"]);
+const emit = defineEmits(["done", "show-login"]);
 const phase = ref(0);
 
 // Tomorrow's committed reminder
@@ -286,6 +293,10 @@ async function dismissReminder() {
   }
   reminderAction.value = '';
   localStorage.removeItem('innerly_reminder');
+}
+
+function handleLoginClick() {
+  emit("show-login");
 }
 
 function handleStart(skipIntro = false) {
@@ -1794,5 +1805,33 @@ onMounted(async () => {
 }
 .skip-fade-leave-to {
   opacity: 0;
+}
+
+/* Login button */
+.ls-login-wrap {
+  margin-top: 10px;
+  text-align: center;
+}
+.ls-login-btn {
+  background: transparent;
+  border: none;
+  font-size: 0.82rem;
+  color: rgba(180, 170, 220, 0.85);
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 20px;
+  transition: all 0.2s;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.ls-login-btn:hover {
+  color: rgba(210, 200, 255, 1);
+  background: rgba(124, 108, 168, 0.15);
+}
+.ls-login-btn.is-dark {
+  color: rgba(200, 190, 255, 0.8);
+}
+.ls-login-btn strong {
+  font-weight: 700;
 }
 </style>

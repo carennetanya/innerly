@@ -50,9 +50,10 @@ export default {
     let newStreak = 1;
 
     if (last_reflection_date) {
-      const last = new Date(last_reflection_date);
-      const curr = new Date(date);
-      const diff = Math.floor((curr - last) / (1000 * 60 * 60 * 24));
+      // Use noon UTC to avoid DST / timezone edge cases in date diff
+      const last = new Date(last_reflection_date.toString().split('T')[0] + 'T12:00:00Z');
+      const curr = new Date(date.toString().split('T')[0] + 'T12:00:00Z');
+      const diff = Math.round((curr - last) / (1000 * 60 * 60 * 24));
       if (diff === 1) newStreak = streak + 1;
       else if (diff === 0) newStreak = streak; // hari yang sama, tidak naik
       else newStreak = 1; // streak putus

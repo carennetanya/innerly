@@ -64,6 +64,7 @@
           :pending-reflection="props.pendingReflection"
           :open-garden="openGardenTrigger"
           :just-registered="!!props.pendingReflection"
+          :has-reflection-today="hasReflectionToday"
           @start-journal="activeView = 'journal'"
           @logout="$emit('logout')"
           @watered="alreadyWateredToday = true"
@@ -383,6 +384,7 @@ function computeStreak(refs) {
   const uniqueReflections = [];
   const seenDates = new Set();
   for (const ref of refs) {
+    // Always strip time component to avoid timezone drift (UTC vs local)
     const dateKey = ref.date ? ref.date.split('T')[0] : ref.date;
     if (!seenDates.has(dateKey)) {
       seenDates.add(dateKey);
@@ -395,21 +397,25 @@ function computeStreak(refs) {
   if (uniqueDates.length === 0) return 0;
   
   const today = getTodayKey();
-  const yd = new Date(); yd.setDate(yd.getDate() - 1);
+  const yd = new Date();
+  yd.setDate(yd.getDate() - 1);
   const yesterday = `${yd.getFullYear()}-${String(yd.getMonth()+1).padStart(2,'0')}-${String(yd.getDate()).padStart(2,'0')}`;
   
+  const mostRecent = uniqueDates[uniqueDates.length - 1];
+
   // Streak only alive if reflected today or yesterday
-  if (uniqueDates[uniqueDates.length - 1] !== today && uniqueDates[uniqueDates.length - 1] !== yesterday) {
+  if (mostRecent !== today && mostRecent !== yesterday) {
     return 0;
   }
   
   // Count consecutive days from the most recent
+  // Use 'T12:00:00' (noon local) to avoid any DST / midnight edge cases
   let streak = 1;
-  let cursor = new Date(uniqueDates[uniqueDates.length - 1] + 'T00:00:00');
+  let cursor = new Date(mostRecent + 'T12:00:00');
   
   // Loop backwards from the most recent date
   for (let i = uniqueDates.length - 2; i >= 0; i--) {
-    const d = new Date(uniqueDates[i] + 'T00:00:00');
+    const d = new Date(uniqueDates[i] + 'T12:00:00');
     const diff = Math.round((cursor - d) / 86400000);
     if (diff === 1) {
       streak++;
@@ -423,6 +429,15 @@ function computeStreak(refs) {
 
 const streakDays = ref(computeStreak(reflections.value));
 const openGardenTrigger = ref(0);
+
+// Computed: apakah user sudah buat refleksi hari ini?
+const hasReflectionToday = computed(() => {
+  const today = getTodayKey();
+  return reflections.value.some(r => {
+    const refDate = r.date ? r.date.split('T')[0] : r.date;
+    return refDate === today;
+  });
+});
 
 // Track whether user already watered today — pakai localStorage supaya instant
 const _wateredDate = localStorage.getItem('innerly_watered_date');
@@ -443,9 +458,8 @@ watch(() => props.pendingReflection, (newRef) => {
   }
   streakDays.value = computeStreak(reflections.value);
   activeView.value = "kebun";
-  if (!alreadyWateredToday.value) {
-    openGardenTrigger.value++;
-  }
+  // Always trigger garden popup after new reflection (new user onboarding)
+  openGardenTrigger.value++;
 }, { immediate: false });
 
 // Watch dbReloadTrigger — reload reflections from DB when user logs in
@@ -457,8 +471,9 @@ watch(() => props.dbReloadTrigger, async (newVal) => {
   try {
     const dbReflections = await reflectionService.getReflections(userId);
     if (dbReflections && dbReflections.length > 0) {
-      const localReflections = reflections.value;
       const merged = [];
+
+      // Add all DB reflections (normalized)
       for (const dbRef of dbReflections) {
         const normalized = {
           date: dbRef.date ? dbRef.date.split('T')[0] : dbRef.date,
@@ -472,7 +487,16 @@ watch(() => props.dbReloadTrigger, async (newVal) => {
         };
         merged.push(normalized);
       }
-      // Overlay local data (including any just-saved reflection) on top
+
+      // Overlay local reflections (current in-memory array)
+      const localReflections = [...reflections.value];
+      // Also include pendingReflection if present
+      if (props.pendingReflection) {
+        const pendingDate = props.pendingReflection.date;
+        const alreadyInLocal = localReflections.some(r => r.date === pendingDate);
+        if (!alreadyInLocal) localReflections.push(props.pendingReflection);
+      }
+
       for (const localRef of localReflections) {
         const localDate = localRef.date ? localRef.date.split('T')[0] : localRef.date;
         const existingIndex = merged.findIndex(r => r.date === localDate);
@@ -484,7 +508,23 @@ watch(() => props.dbReloadTrigger, async (newVal) => {
         }
       }
       reflections.value = merged;
-      streakDays.value = computeStreak(merged);
+
+      // Use DB streak as source of truth to avoid timezone bugs in computeStreak
+      try {
+        const streakRes = await fetch(`/api/streak/${userId}`);
+        const streakData = await streakRes.json();
+        if (streakData && typeof streakData.streak === 'number' && streakData.streak > 0) {
+          streakDays.value = streakData.streak;
+        } else {
+          streakDays.value = computeStreak(merged);
+        }
+      } catch {
+        streakDays.value = computeStreak(merged);
+      }
+    } else if (props.pendingReflection) {
+      // No DB data yet but have pending reflection (just registered)
+      reflections.value = [props.pendingReflection];
+      streakDays.value = computeStreak(reflections.value);
     }
   } catch (err) {
     console.error('Failed to reload reflections from database:', err);
@@ -508,8 +548,13 @@ onMounted(async () => {
       const dbReflections = await reflectionService.getReflections(userId);
       if (dbReflections && dbReflections.length > 0) {
         // Start from DB as base, then overlay local data on top
-        // This ensures newly saved reflections (pendingReflection) are not overwritten
-        const localReflections = reflections.value;
+        const localReflections = [...reflections.value];
+        // Also include pendingReflection from props (onboarding/new user)
+        if (props.pendingReflection) {
+          const pendingDate = props.pendingReflection.date;
+          const alreadyInLocal = localReflections.some(r => r.date === pendingDate);
+          if (!alreadyInLocal) localReflections.push(props.pendingReflection);
+        }
         const merged = [];
 
         // Add all DB reflections (normalized)
@@ -533,7 +578,6 @@ onMounted(async () => {
           const existingIndex = merged.findIndex(r => r.date === localDate);
           const normalizedLocal = { ...localRef, date: localDate };
           if (existingIndex >= 0) {
-            // Local data wins — it may contain just-saved reflection not yet in DB
             merged[existingIndex] = normalizedLocal;
           } else {
             merged.push(normalizedLocal);
@@ -541,17 +585,30 @@ onMounted(async () => {
         }
 
         reflections.value = merged;
-        streakDays.value = computeStreak(merged);
+
+        // Use DB streak as source of truth to avoid timezone bugs in computeStreak
+        try {
+          const streakRes = await fetch(`/api/streak/${userId}`);
+          const streakData = await streakRes.json();
+          if (streakData && typeof streakData.streak === 'number' && streakData.streak > 0) {
+            streakDays.value = streakData.streak;
+          } else {
+            streakDays.value = computeStreak(merged);
+          }
+        } catch {
+          streakDays.value = computeStreak(merged);
+        }
+      } else if (props.pendingReflection) {
+        // DB empty but have pending reflection (just registered first time)
+        reflections.value = [props.pendingReflection];
+        streakDays.value = computeStreak(reflections.value);
       }
     } catch (err) {
       console.error("Failed to load reflections from database:", err);
     }
   }
-
-  // Auto-open popup hanya jika belum siram hari ini
-  if (activeView.value === 'kebun' && !props.pendingReflection && !alreadyWateredToday.value) {
-    setTimeout(() => { openGardenTrigger.value++; }, 800);
-  }
+  // Note: Growth panel is NOT auto-opened on mount.
+  // It opens automatically only after user completes a journal reflection.
 });
 
 const navItems = [
@@ -682,6 +739,14 @@ function onJournalDone(data) {
     const trySave = async () => {
       try {
         await reflectionService.saveReflection(userId, newRef);
+        // After successful save, fetch authoritative streak from DB
+        try {
+          const streakRes = await fetch(`/api/streak/${userId}`);
+          const streakData = await streakRes.json();
+          if (streakData && typeof streakData.streak === 'number' && streakData.streak > 0) {
+            streakDays.value = streakData.streak;
+          }
+        } catch { /* keep computeStreak value if fetch fails */ }
       } catch (err) {
         console.error('Failed to save reflection to database, retrying...', err);
         setTimeout(async () => {
@@ -696,13 +761,11 @@ function onJournalDone(data) {
     trySave();
   }
   
-  // Recompute streak (only increments if first reflection today)
+  // Optimistic local streak update while DB save is in flight
   streakDays.value = computeStreak(updated);
   activeView.value = "kebun";
-  // Trigger garden popup hanya jika belum siram hari ini
-  if (!alreadyWateredToday.value) {
-    openGardenTrigger.value++;
-  }
+  // Trigger garden popup - always show after reflection so user can water
+  openGardenTrigger.value++;
 }
 </script>
 

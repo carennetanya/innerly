@@ -138,7 +138,7 @@
 
     <!-- FAB add button -->
     <div class="kb-fab-wrap">
-      <button class="kb-fab" @click="toggleGrowthPanel" :title="lang === 'id' ? 'Tambah Refleksi' : 'Add Reflection'">
+      <button class="kb-fab" :class="{ 'kb-fab-pulse': !props.hasReflectionToday }" @click="toggleGrowthPanel" :title="lang === 'id' ? 'Tambah Refleksi' : 'Add Reflection'">
         <img alt="scope" src="/scope.png" class="kb-fab-scope" />
         <span class="kb-fab-plus">+</span>
       </button>
@@ -169,18 +169,35 @@
             </div>
           </div>
 
+          <!-- Banner: no reflection today (show above everything) -->
+          <Transition name="hint-fade">
+            <div v-if="!props.hasReflectionToday && !props.justRegistered && !hasWateredLocally" class="kb-no-ref-banner">
+              <span class="kb-no-ref-icon">📝</span>
+              <div class="kb-no-ref-text">
+                <strong>{{ lang === 'id' ? 'Belum ada refleksi hari ini' : 'No reflection yet today' }}</strong>
+                <span>{{ lang === 'id' ? 'Buat refleksi dulu sebelum menyiram tanamanmu.' : 'Create a reflection before watering your plant.' }}</span>
+              </div>
+              <button class="kb-no-ref-btn" @click="onPlantReflection">
+                {{ lang === 'id' ? 'Buat Refleksi →' : 'Make Reflection →' }}
+              </button>
+            </div>
+          </Transition>
+
           <div class="kb-growth-date-row">
             <div class="kb-growth-date">
               <span class="kb-growth-month">{{ currentMonthShort }}</span>
               <span class="kb-growth-daynum">{{ currentDay }}</span>
             </div>
             <div class="kb-watercan-wrap">
-              <span class="kb-watercan-hint" v-if="!hasWateredLocally">Water your plant 💧</span>
-              <span class="kb-watercan-hint kb-watercan-done" v-else>✅ Sudah disiram hari ini!</span>
+              <span class="kb-watercan-hint kb-watercan-no-ref" v-if="!hasWateredLocally && !props.hasReflectionToday && !props.justRegistered">
+                📝 {{ lang === 'id' ? 'Buat refleksi dulu!' : 'Make a reflection first!' }}
+              </span>
+              <span class="kb-watercan-hint" v-else-if="!hasWateredLocally">Water your plant 💧</span>
+              <span class="kb-watercan-hint kb-watercan-done" v-else>✅ {{ lang === 'id' ? 'Sudah disiram hari ini!' : 'Watered today!' }}</span>
               <img
                 v-if="!hasWateredLocally"
                 class="kb-growth-watercan"
-                :class="{ 'is-watering': isWatering }"
+                :class="{ 'is-watering': isWatering, 'watercan-disabled': !props.hasReflectionToday && !props.justRegistered }"
                 src="/water-can.png"
                 alt="water can"
                 @mousedown.prevent="onWatercanMouseDown"
@@ -409,20 +426,21 @@ const props = defineProps({
   userId: { type: [String, Number], default: null },
   pendingReflection: { type: Object, default: null },
   justRegistered: { type: Boolean, default: false }, // New user from onboarding
+  hasReflectionToday: { type: Boolean, default: false }, // Whether user already has reflection today
 })
 
 const emit = defineEmits(['start-journal', 'logout', 'watered'])
 
 // Open garden popup when triggered from parent (after journal done)
-// Auto-open selalu muncul setiap kali ada trigger baru (setelah refleksi disimpan)
+// Always open - let the panel itself show appropriate content
 watch(() => props.openGarden, (val) => {
-  if (val > 0 && !hasWateredLocally.value) {
+  if (val > 0) {
     setTimeout(() => { growthPanelOpen.value = true }, 600)
   }
 })
 
 watch(() => props.pendingReflection, (newVal) => {
-  if (newVal && !hasWateredLocally.value) {
+  if (newVal) {
     setTimeout(() => { growthPanelOpen.value = true }, 600)
   }
 })
@@ -888,7 +906,8 @@ function triggerWatering() {
   }
   // Block if no reflection today - user must make reflection first
   // Exception: new users who just registered (they made reflection during onboarding)
-  if (!props.justRegistered && !hasReflectionToday()) {
+  const hasRef = props.hasReflectionToday || props.justRegistered || hasReflectionToday()
+  if (!hasRef) {
     showReflectionRequiredToast()
     return
   }
@@ -1604,6 +1623,17 @@ function onPlantReflection() {
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
+/* FAB pulse animation when no reflection today */
+@keyframes fab-pulse {
+  0%, 100% { box-shadow: 0 8px 32px rgba(124, 108, 168, 0.4), 0 0 0 0 rgba(124, 108, 168, 0.4); }
+  50% { box-shadow: 0 8px 32px rgba(124, 108, 168, 0.6), 0 0 0 12px rgba(124, 108, 168, 0); }
+}
+.kb-fab.kb-fab-pulse {
+  animation: fab-pulse 1.8s ease-in-out infinite;
+}
+.kb-fab.kb-fab-pulse .kb-fab-plus {
+  animation: none;
+}
 
 /* ── Water drop animation ── */
 .kb-water-drops {
@@ -2166,6 +2196,65 @@ function onPlantReflection() {
   text-align: center;
   box-shadow: 0 4px 16px rgba(245,166,166,0.3);
   margin-top: -6px;
+}
+
+/* No reflection banner */
+.kb-no-ref-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: linear-gradient(135deg, #fff8e7, #fff3cd);
+  border: 1.5px solid #f5c842;
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin: 8px 0 2px;
+  flex-wrap: wrap;
+}
+.kb-no-ref-icon {
+  font-size: 1.4rem;
+  flex-shrink: 0;
+}
+.kb-no-ref-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.kb-no-ref-text strong {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #7a5c00;
+}
+.kb-no-ref-text span {
+  font-size: 0.75rem;
+  color: #8a6a00;
+}
+.kb-no-ref-btn {
+  background: #f5c842;
+  border: none;
+  border-radius: 20px;
+  padding: 7px 14px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #4a3800;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+.kb-no-ref-btn:hover {
+  background: #e6b800;
+  transform: translateY(-1px);
+}
+
+/* Watercan disabled when no reflection */
+.kb-growth-watercan.watercan-disabled {
+  opacity: 0.35;
+  filter: grayscale(60%);
+  cursor: not-allowed;
+}
+.kb-watercan-no-ref {
+  color: #c0392b;
+  font-weight: 700;
 }
 
 /* Toast slide-up transition */
