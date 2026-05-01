@@ -32,8 +32,7 @@ export default {
       `INSERT INTO user_streaks (user_id, streak, last_reflection_date)
        VALUES ($1, $2, $3)
        ON CONFLICT (user_id)
-       DO UPDATE SET streak = $2, last_reflection_date = $3,
-         last_watered_date = COALESCE(user_streaks.last_watered_date, EXCLUDED.last_watered_date)`,
+       DO UPDATE SET streak = $2, last_reflection_date = $3`,
       [userId, streak, lastReflectionDate]
     );
   },

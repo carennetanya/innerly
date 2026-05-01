@@ -373,6 +373,29 @@ const selectedMood = ref(props.initialMood?.mood ?? null);
 // ── Reflections storage ──
 const reflections = ref([]);
 
+// ── Helper: normalize a DB row into frontend shape ──
+function normalizeDbReflection(dbRef) {
+  // moods from PostgreSQL JSONB can be: array, JSON string, or null
+  let moods = dbRef.moods;
+  if (typeof moods === 'string') {
+    try { moods = JSON.parse(moods); } catch { moods = moods ? [moods] : []; }
+  }
+  if (!Array.isArray(moods)) moods = moods ? [moods] : [];
+  const mood = dbRef.mood || (moods.length > 0 ? moods[0] : '');
+  if (moods.length === 0 && mood) moods = [mood];
+  return {
+    date: dbRef.date ? dbRef.date.toString().split('T')[0] : dbRef.date,
+    mood,
+    moods,
+    trigger: dbRef.trigger || '',
+    wentWell: dbRef.went_well || dbRef.wentWell || '',
+    improve: dbRef.improve || '',
+    insight: dbRef.insight || '',
+    action: dbRef.action || '',
+    created_at: dbRef.created_at || null,
+  };
+}
+
 // ── Streak logic ──
 function getTodayKey() {
   const d = new Date();
@@ -475,17 +498,7 @@ watch(() => props.dbReloadTrigger, async (newVal) => {
 
       // Add all DB reflections (normalized)
       for (const dbRef of dbReflections) {
-        const normalized = {
-          date: dbRef.date ? dbRef.date.split('T')[0] : dbRef.date,
-          mood: dbRef.mood || '',
-          moods: dbRef.moods || (dbRef.mood ? [dbRef.mood] : []),
-          trigger: dbRef.trigger || '',
-          wentWell: dbRef.went_well || dbRef.wentWell || '',
-          improve: dbRef.improve || '',
-          insight: dbRef.insight || '',
-          action: dbRef.action || '',
-        };
-        merged.push(normalized);
+        merged.push(normalizeDbReflection(dbRef));
       }
 
       // Overlay local reflections (current in-memory array)
@@ -559,17 +572,7 @@ onMounted(async () => {
 
         // Add all DB reflections (normalized)
         for (const dbRef of dbReflections) {
-          const normalized = {
-            date: dbRef.date ? dbRef.date.split('T')[0] : dbRef.date,
-            mood: dbRef.mood || '',
-            moods: dbRef.moods || (dbRef.mood ? [dbRef.mood] : []),
-            trigger: dbRef.trigger || '',
-            wentWell: dbRef.went_well || dbRef.wentWell || '',
-            improve: dbRef.improve || '',
-            insight: dbRef.insight || '',
-            action: dbRef.action || '',
-          };
-          merged.push(normalized);
+          merged.push(normalizeDbReflection(dbRef));
         }
 
         // Overlay local reflections on top (local data is more recent/authoritative)
@@ -708,19 +711,26 @@ const todayStr = computed(() => {
 const greeting = computed(() => t.value.greeting(props.userName));
 const displayName = computed(() => t.value.displayName(props.userName));
 
-function onJournalDone(data) {
+async function onJournalDone(data) {
   const dateKey = getTodayKey();
+  // Normalize moods: support both moods[] array and single mood string
+  const moodsArr = Array.isArray(data?.moods) && data.moods.length > 0
+    ? data.moods
+    : (data?.mood ? [data.mood] : []);
+  const moodStr = moodsArr[0] || data?.mood || '';
+
   const newRef = {
     date: dateKey,
-    mood: data?.moods?.[0] ?? data?.mood ?? '',
-    moods: data?.moods ?? (data?.mood ? [data.mood] : []),
+    mood: moodStr,
+    moods: moodsArr,
     trigger: data?.trigger ?? '',
     wentWell: data?.wentWell ?? '',
     improve: data?.improve ?? '',
     insight: data?.insight ?? '',
     action: data?.action ?? '',
+    created_at: new Date().toISOString(),
   };
-  
+
   // Check if reflection for this date already exists
   const existingIndex = reflections.value.findIndex(r => r.date === dateKey);
   if (existingIndex >= 0) {
@@ -728,44 +738,47 @@ function onJournalDone(data) {
   } else {
     reflections.value.push(newRef);
   }
-  
+
   const updated = reflections.value;
   localStorage.setItem('innerly_reflections', JSON.stringify(updated));
-  
-  // Save to database (with retry once on failure)
+
+  // Optimistic local streak update
+  streakDays.value = computeStreak(updated);
+
+  // Navigate immediately (optimistic UI)
+  activeView.value = "kebun";
+  openGardenTrigger.value++;
+
+  // Save to database — await so data is guaranteed saved before user can refresh
   const user = authService.getUser();
   const userId = user && (user._id || user.id);
   if (userId) {
-    const trySave = async () => {
+    try {
+      await reflectionService.saveReflection(userId, newRef);
+      console.log('[Innerly] Reflection saved to DB successfully');
+      // After successful save, fetch authoritative streak from DB
       try {
-        await reflectionService.saveReflection(userId, newRef);
-        // After successful save, fetch authoritative streak from DB
+        const streakRes = await fetch(`/api/streak/${userId}`);
+        const streakData = await streakRes.json();
+        if (streakData && typeof streakData.streak === 'number' && streakData.streak > 0) {
+          streakDays.value = streakData.streak;
+        }
+      } catch { /* keep computeStreak value if fetch fails */ }
+    } catch (err) {
+      console.error('[Innerly] Failed to save reflection to DB, retrying in 2s...', err);
+      // Retry once after 2 seconds
+      setTimeout(async () => {
         try {
-          const streakRes = await fetch(`/api/streak/${userId}`);
-          const streakData = await streakRes.json();
-          if (streakData && typeof streakData.streak === 'number' && streakData.streak > 0) {
-            streakDays.value = streakData.streak;
-          }
-        } catch { /* keep computeStreak value if fetch fails */ }
-      } catch (err) {
-        console.error('Failed to save reflection to database, retrying...', err);
-        setTimeout(async () => {
-          try {
-            await reflectionService.saveReflection(userId, newRef);
-          } catch (err2) {
-            console.error('Retry also failed:', err2);
-          }
-        }, 2000);
-      }
-    };
-    trySave();
+          await reflectionService.saveReflection(userId, newRef);
+          console.log('[Innerly] Reflection saved to DB on retry');
+        } catch (err2) {
+          console.error('[Innerly] Retry also failed:', err2);
+        }
+      }, 2000);
+    }
+  } else {
+    console.warn('[Innerly] No userId found — reflection not saved to DB. User might not be logged in.');
   }
-  
-  // Optimistic local streak update while DB save is in flight
-  streakDays.value = computeStreak(updated);
-  activeView.value = "kebun";
-  // Trigger garden popup - always show after reflection so user can water
-  openGardenTrigger.value++;
 }
 </script>
 

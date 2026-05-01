@@ -547,6 +547,7 @@ const steps = [
 const answers = ref({
   trigger: props.initialTrigger || "",
   mood: "",
+  moods: [],
   moodImg: "",
   moodNote: "",
   wentWell: "",
@@ -572,9 +573,11 @@ function selectMood(label) {
   if (answers.value.mood === label) {
     answers.value.mood = "";
     answers.value.moodImg = "";
+    answers.value.moods = [];
   } else {
     answers.value.mood = label;
     answers.value.moodImg = option?.img || "";
+    answers.value.moods = [label];
   }
 }
 
@@ -686,6 +689,7 @@ function startNew() {
   answers.value = {
     trigger: "",
     mood: "",
+    moods: [],
     moodEmoji: "",
     moodNote: "",
     wentWell: "",
