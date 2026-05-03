@@ -1,4 +1,4 @@
-const API_URL = "/api/commitment";
+const API_URL = "https://innerly-production.up.railway.app/api/commitment";
 
 export const commitmentService = {
   async saveCommitment(userId, { date, action, moodImg, mood }) {

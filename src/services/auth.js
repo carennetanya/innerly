@@ -1,4 +1,4 @@
-const API_URL = "/api/auth";
+const API_URL = "https://innerly-production.up.railway.app/api/auth";
 
 export const authService = {
   async register(name, email, password, username) {

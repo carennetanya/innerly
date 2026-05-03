@@ -1,4 +1,4 @@
-const API_URL = "/api/reflections";
+const API_URL = "https://innerly-production.up.railway.app/api/reflections";
 
 export const reflectionService = {
   async getReflections(userId) {
