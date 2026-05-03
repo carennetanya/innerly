@@ -11,6 +11,13 @@
         </div>
         <div class="topbar-right">
           <button
+            class="lang-btn"
+            @click="$emit('toggleLang')"
+            :title="props.lang === 'id' ? 'Switch to English' : 'Ganti ke Indonesia'"
+          >
+            {{ props.lang === 'id' ? 'Indonesia' : 'English' }}
+          </button>
+          <button
             class="icon-btn"
             @click="$emit('toggleTheme')"
             :title="isDark ? 'Light mode' : 'Dark mode'"
@@ -46,11 +53,54 @@
               <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
             </svg>
           </button>
-          <div class="avatar">
+          <div class="avatar" @click="topbarProfileOpen = !topbarProfileOpen" ref="topbarAvatarRef" style="cursor:pointer;">
             {{ props.userName ? props.userName[0].toUpperCase() : "A" }}
           </div>
         </div>
       </header>
+
+      <!-- Topbar Profile Dropdown -->
+      <Transition name="profile-drop">
+        <div class="kb-profile-dropdown topbar-profile-dropdown" v-if="topbarProfileOpen" ref="topbarDropRef">
+          <div class="kb-profile-header">
+            <div class="kb-profile-avatar-lg">
+              {{ props.userName ? props.userName[0].toUpperCase() : 'A' }}
+            </div>
+            <div class="kb-profile-info">
+              <div class="kb-profile-username">{{ topbarUsername || props.userName || 'User' }}</div>
+              <div class="kb-profile-email">@{{ topbarUsername || props.userName || 'user' }}</div>
+            </div>
+          </div>
+          <div class="kb-profile-divider"></div>
+          <div class="kb-profile-section">
+            <div class="kb-profile-field-label">Email</div>
+            <div class="kb-profile-field-value">{{ topbarEmail }}</div>
+            <button class="kb-profile-change-btn" @click="topbarShowEmail = !topbarShowEmail">
+              {{ topbarShowEmail ? 'Cancel' : 'Change Email' }}
+            </button>
+            <div class="kb-profile-edit-row" v-if="topbarShowEmail">
+              <input class="kb-profile-input" v-model="topbarNewEmail" type="email" placeholder="New email address" />
+              <button class="kb-profile-save-btn" @click="saveTopbarEmail">Save</button>
+            </div>
+          </div>
+          <div class="kb-profile-divider"></div>
+          <div class="kb-profile-section">
+            <div class="kb-profile-field-label">Password</div>
+            <div class="kb-profile-field-value">••••••••</div>
+            <button class="kb-profile-change-btn" @click="topbarShowPw = !topbarShowPw">
+              {{ topbarShowPw ? 'Cancel' : 'Change Password' }}
+            </button>
+            <div class="kb-profile-edit-row" v-if="topbarShowPw" style="flex-direction:column;gap:0;align-items:stretch;">
+              <input class="kb-profile-input" v-model="topbarNewPw" type="password" placeholder="New password" />
+              <input class="kb-profile-input" v-model="topbarConfirmPw" type="password" placeholder="Confirm password" style="margin-top:6px;" />
+              <button class="kb-profile-save-btn" @click="saveTopbarPassword" style="margin-top:10px;">Save</button>
+              <div v-if="topbarPwError" class="kb-profile-error" style="color:#dc2626;font-size:0.75rem;margin-top:4px;">{{ topbarPwError }}</div>
+            </div>
+          </div>
+          <div class="kb-profile-divider"></div>
+          <button class="kb-profile-logout-btn" @click="$emit('logout')">🚪 Log Out</button>
+        </div>
+      </Transition>
 
       <!-- Kebun Innerly -->
       <div class="content kebun-view" v-if="activeView === 'kebun'">
@@ -67,103 +117,11 @@
           :has-reflection-today="hasReflectionToday"
           @start-journal="activeView = 'journal'"
           @logout="$emit('logout')"
+          @toggle-theme="$emit('toggleTheme')"
+          @toggle-lang="$emit('toggleLang')"
           @watered="alreadyWateredToday = true"
+          @reflection-updated="onReflectionUpdated"
         />
-      </div>
-
-      <!-- Dashboard content -->
-      <div class="content" v-else-if="activeView === 'dashboard'">
-        <!-- Welcome banner -->
-        <div class="welcome-banner">
-          <div class="welcome-text">
-            <p class="welcome-greeting">{{ displayName }} 👋</p>
-            <h2 class="welcome-name">{{ t.howFeeling }}</h2>
-            <p class="welcome-sub">{{ t.takeAMoment }}</p>
-          </div>
-          <div class="welcome-art">
-            <img src="/logo.png" alt="" class="welcome-logo-art" />
-          </div>
-        </div>
-
-        <!-- Quick mood pick -->
-        <div class="section-title">{{ t.quickMoodCheck }}</div>
-        <div class="mood-row">
-          <button
-            v-for="m in moods"
-            :key="m.label"
-            class="mood-pill"
-            :class="{ selected: selectedMood === m.label }"
-            @click="selectedMood = m.label"
-            :style="{ '--mood-color': m.color }"
-          >
-            <span class="mood-emoji">{{ m.emoji }}</span>
-            <span class="mood-label">{{ m.label }}</span>
-          </button>
-        </div>
-
-        <!-- Cards row -->
-        <div class="cards-grid">
-          <!-- Start journal -->
-          <div class="card card-accent" @click="activeView = 'journal'">
-            <div class="card-icon">📝</div>
-            <div class="card-body">
-              <div class="card-title">{{ t.startJournaling }}</div>
-              <div class="card-sub">{{ t.journalSub }}</div>
-            </div>
-            <div class="card-arrow">→</div>
-          </div>
-
-          <!-- Streak -->
-          <div class="card">
-            <div class="card-icon">🔥</div>
-            <div class="card-body">
-              <div class="card-title">{{ streakDays }} {{ t.dayStreak }}</div>
-              <div class="card-sub">{{ t.keepGoing }}</div>
-            </div>
-            <div class="mini-bar">
-              <div
-                v-for="d in 7"
-                :key="d"
-                class="mini-bar-seg"
-                :class="{ filled: d <= streakDays % 7 || streakDays >= 7 }"
-              ></div>
-            </div>
-          </div>
-
-          <!-- Today challenge -->
-          <div class="card">
-            <div class="card-icon">✨</div>
-            <div class="card-body">
-              <div class="card-title">{{ t.todaysChallenge }}</div>
-              <div class="card-sub card-challenge">{{ todayChallenge }}</div>
-            </div>
-          </div>
-
-          <!-- Weekly report -->
-          <div class="card" @click="activeView = 'insights'">
-            <div class="card-icon">📊</div>
-            <div class="card-body">
-              <div class="card-title">{{ t.weeklyReport }}</div>
-              <div class="card-sub">{{ t.seePattern }}</div>
-            </div>
-            <div class="card-arrow">→</div>
-          </div>
-        </div>
-
-        <!-- Mood week mini chart -->
-        <div class="section-title">{{ t.thisWeeksMood }}</div>
-        <div class="week-mood">
-          <div v-for="(day, i) in weekMoods" :key="i" class="week-day">
-            <span class="week-emoji">{{ day.emoji }}</span>
-            <div class="week-bar-wrap">
-              <div
-                class="week-bar"
-                :style="{ height: day.val + '%', background: day.color }"
-              ></div>
-            </div>
-            <span class="week-label">{{ day.day }}</span>
-          </div>
-        </div>
       </div>
 
       <!-- Guided Journal -->
@@ -172,29 +130,9 @@
           :is-dark="isDark"
           :initial-trigger="props.initialReflection"
           :lang="props.lang"
-          @back="activeView = 'dashboard'"
+          @back="activeView = 'kebun'"
           @done="onJournalDone"
         />
-      </div>
-
-      <!-- Mood tracker placeholder -->
-      <div class="content coming-soon" v-else-if="activeView === 'mood'">
-        <div class="cs-icon">🌈</div>
-        <h2>{{ t.moodTrackerTitle }}</h2>
-        <p>{{ t.moodTrackerDesc }}</p>
-        <button class="btn-primary" @click="activeView = 'dashboard'">
-          ← Back
-        </button>
-      </div>
-
-      <!-- Insights placeholder -->
-      <div class="content coming-soon" v-else-if="activeView === 'insights'">
-        <div class="cs-icon">💡</div>
-        <h2>{{ t.insightsTitle }}</h2>
-        <p>{{ t.insightsDesc }}</p>
-        <button class="btn-primary" @click="activeView = 'dashboard'">
-          ← Back
-        </button>
       </div>
 
       <!-- Other placeholders -->
@@ -202,7 +140,7 @@
         <div class="cs-icon">🚧</div>
         <h2>{{ currentNavItem?.label }}</h2>
         <p>{{ t.comingSoon }}</p>
-        <button class="btn-primary" @click="activeView = 'dashboard'">
+        <button class="btn-primary" @click="activeView = 'kebun'">
           ← Back
         </button>
       </div>
@@ -215,13 +153,24 @@
         :key="item.id"
         class="bottom-nav-item"
         :class="{ active: activeView === item.id }"
-        @click="activeView = item.id"
+        @click="handleNavClick(item.id)"
       >
         <span class="bottom-nav-icon" v-html="item.icon"></span>
         <span class="bottom-nav-label">{{ item.label }}</span>
         <span class="bottom-nav-badge" v-if="item.badge">{{ item.badge }}</span>
       </button>
     </nav>
+
+    <!-- Already reflected today warning -->
+    <Transition name="toast-pop">
+      <div v-if="showReflectionDoneToast" class="reflection-done-toast" :class="{ 'is-dark': isDark }">
+        <span class="toast-icon">✅</span>
+        <div class="toast-body">
+          <div class="toast-title">{{ props.lang === 'id' ? 'Refleksi hari ini sudah selesai!' : "You've already reflected today!" }}</div>
+          <div class="toast-sub">{{ props.lang === 'id' ? 'Lanjutkan besok untuk menjaga streakmu 🌱' : 'Come back tomorrow to keep your streak going 🌱' }}</div>
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
 
@@ -230,7 +179,6 @@ import { ref, computed, onMounted, watch } from "vue";
 import GuidedJournal from "../components/GuidedJournal.vue";
 import GardenView from "../components/GardenView.vue";
 import { reflectionService } from "../services/reflection.js";
-import { commitmentService } from "../services/commitment.js";
 import { authService } from "../services/auth.js";
 
 const props = defineProps({
@@ -245,121 +193,67 @@ const props = defineProps({
 
 const i18n = {
   en: {
-    streak: "day streak",
-    howFeeling: "How are you feeling today?",
-    takeAMoment: "Take a moment to reflect. Your inner space is ready.",
-    quickMoodCheck: "Quick Mood Check",
-    startJournaling: "Start Journaling",
-    journalSub: "Guided Gibbs\' Reflection • 6 steps",
-    dayStreak: "Day Streak",
-    keepGoing: "Keep it going!",
-    todaysChallenge: "Today\'s Challenge",
-    weeklyReport: "Weekly Report",
-    seePattern: "See your mood pattern",
-    thisWeeksMood: "This Week\'s Mood",
-    moodTrackerTitle: "Mood Tracker",
-    moodTrackerDesc: "Track your emotions daily & see patterns — coming next!",
-    insightsTitle: "Insights & Summary",
-    insightsDesc: "AI-powered emotional pattern recognition — coming next!",
     comingSoon: "This feature is being built — stay tuned!",
-    back: "← Back",
     nav: {
-      dashboard: "Dashboard",
       journal: "Guided Journal",
-      mood: "Mood Tracker",
-      insights: "Insights",
-      growth: "Growth Tracker",
-      timeline: "Life Timeline",
-      challenge: "Challenges",
-      reminder: "Reminders",
     },
-    moods: [
-      { emoji: "😊", label: "Happy", color: "#f5a623" },
-      { emoji: "😌", label: "Calm", color: "#6ab04c" },
-      { emoji: "😔", label: "Sad", color: "#7c6ca8" },
-      { emoji: "😤", label: "Angry", color: "#e74c3c" },
-      { emoji: "😰", label: "Anxious", color: "#e67e22" },
-      { emoji: "😴", label: "Tired", color: "#95a5a6" },
-      { emoji: "🤩", label: "Excited", color: "#f39c12" },
-      { emoji: "😐", label: "Neutral", color: "#a78bfa" },
-    ],
-    weekDays: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
-    challenges: [
-      "Write 3 things you\'re grateful for today.",
-      "Reflect on a moment that made you smile this week.",
-      "What\'s one thing you\'d tell your past self?",
-      "Describe a challenge you overcame recently.",
-      "What does your ideal day look like?",
-    ],
-    greeting: (name) => {
-      const h = new Date().getHours();
-      const g =
-        h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
-      return name ? g + ", " + name : g;
-    },
-    displayName: (name) => (name ? "Hi, " + name : "Hi there"),
   },
   id: {
-    streak: "hari berturut-turut",
-    howFeeling: "Gimana perasaanmu hari ini?",
-    takeAMoment:
-      "Luangkan waktu sejenak untuk merenung. Ruang batinmu sudah siap.",
-    quickMoodCheck: "Cek Mood Cepat",
-    startJournaling: "Mulai Journaling",
-    journalSub: "Refleksi Terpandu Gibbs • 6 langkah",
-    dayStreak: "Hari Berturut-turut",
-    keepGoing: "Pertahankan!",
-    todaysChallenge: "Tantangan Hari Ini",
-    weeklyReport: "Laporan Mingguan",
-    seePattern: "Lihat pola moodmu",
-    thisWeeksMood: "Mood Minggu Ini",
-    moodTrackerTitle: "Pelacak Mood",
-    moodTrackerDesc:
-      "Catat emosimu setiap hari & lihat polanya — segera hadir!",
-    insightsTitle: "Wawasan & Ringkasan",
-    insightsDesc: "Pengenalan pola emosi berbasis AI — segera hadir!",
     comingSoon: "Fitur ini sedang dibangun — nantikan ya!",
-    back: "← Kembali",
     nav: {
-      dashboard: "Beranda",
       journal: "Jurnal Terpandu",
-      mood: "Pelacak Mood",
-      insights: "Wawasan",
-      growth: "Pelacak Pertumbuhan",
-      timeline: "Linimasa Hidup",
-      challenge: "Tantangan",
-      reminder: "Pengingat",
     },
-    moods: [
-      { emoji: "😊", label: "Senang", color: "#f5a623" },
-      { emoji: "😌", label: "Tenang", color: "#6ab04c" },
-      { emoji: "😔", label: "Sedih", color: "#7c6ca8" },
-      { emoji: "😤", label: "Marah", color: "#e74c3c" },
-      { emoji: "😰", label: "Cemas", color: "#e67e22" },
-      { emoji: "😴", label: "Lelah", color: "#95a5a6" },
-      { emoji: "🤩", label: "Bersemangat", color: "#f39c12" },
-      { emoji: "😐", label: "Biasa aja", color: "#a78bfa" },
-    ],
-    weekDays: ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"],
-    challenges: [
-      "Tulis 3 hal yang kamu syukuri hari ini.",
-      "Renungkan momen yang membuatmu tersenyum minggu ini.",
-      "Apa satu hal yang ingin kamu katakan pada dirimu di masa lalu?",
-      "Ceritakan tantangan yang berhasil kamu lewati belakangan ini.",
-      "Seperti apa hari yang ideal bagimu?",
-    ],
-    greeting: (name) => {
-      const h = new Date().getHours();
-      const g =
-        h < 12 ? "Selamat pagi" : h < 17 ? "Selamat siang" : "Selamat malam";
-      return name ? g + ", " + name : g;
-    },
-    displayName: (name) => (name ? "Hai, " + name : "Hai"),
   },
 };
 
 const t = computed(() => i18n[props.lang] ?? i18n.en);
-const emit = defineEmits(["toggleTheme", "logout"]);
+const emit = defineEmits(["toggleTheme", "toggleLang", "logout"]);
+
+const showReflectionDoneToast = ref(false)
+let toastTimer = null
+
+function handleNavClick(id) {
+  if (id === 'journal' && hasReflectionToday.value) {
+    showReflectionDoneToast.value = true
+    clearTimeout(toastTimer)
+    toastTimer = setTimeout(() => { showReflectionDoneToast.value = false }, 3500)
+    return
+  }
+  activeView.value = id
+}
+
+// ── Topbar Profile Dropdown ──
+const topbarProfileOpen = ref(false)
+const topbarAvatarRef = ref(null)
+const topbarDropRef = ref(null)
+const topbarEmail = ref('user@innerly.app')
+const topbarUsername = ref('')
+const topbarShowEmail = ref(false)
+const topbarShowPw = ref(false)
+const topbarNewEmail = ref('')
+const topbarNewPw = ref('')
+const topbarConfirmPw = ref('')
+const topbarPwError = ref('')
+
+function saveTopbarEmail() {
+  if (topbarNewEmail.value) {
+    topbarEmail.value = topbarNewEmail.value
+    topbarNewEmail.value = ''
+    topbarShowEmail.value = false
+  }
+}
+function saveTopbarPassword() {
+  if (!topbarNewPw.value || !topbarConfirmPw.value) { topbarPwError.value = 'Password cannot be empty.'; return }
+  if (topbarNewPw.value !== topbarConfirmPw.value) { topbarPwError.value = 'Passwords do not match.'; return }
+  topbarNewPw.value = ''; topbarConfirmPw.value = ''; topbarPwError.value = ''; topbarShowPw.value = false
+}
+function handleTopbarOutsideClick(e) {
+  if (topbarProfileOpen.value &&
+      topbarDropRef.value && !topbarDropRef.value.contains(e.target) &&
+      topbarAvatarRef.value && !topbarAvatarRef.value.contains(e.target)) {
+    topbarProfileOpen.value = false
+  }
+}
 
 // ── Resolve userId — support both auth flow (authService) and legacy onboarding ──
 const currentUserId = computed(() => {
@@ -368,7 +262,6 @@ const currentUserId = computed(() => {
 });
 
 const activeView = ref("kebun");
-const selectedMood = ref(props.initialMood?.mood ?? null);
 
 // ── Reflections storage ──
 const reflections = ref([]);
@@ -388,10 +281,15 @@ function normalizeDbReflection(dbRef) {
     mood,
     moods,
     trigger: dbRef.trigger || '',
+    description: dbRef.trigger || '',
     wentWell: dbRef.went_well || dbRef.wentWell || '',
     improve: dbRef.improve || '',
     insight: dbRef.insight || '',
+    analysis: dbRef.insight || '',
     action: dbRef.action || '',
+    title: dbRef.title || '',
+    feeling: dbRef.feeling || '',
+    conclusion: dbRef.conclusion || '',
     created_at: dbRef.created_at || null,
   };
 }
@@ -549,6 +447,13 @@ onMounted(async () => {
   const user = authService.getUser();
   const userId = user && (user._id || user.id);
 
+  // Load topbar profile info
+  if (user) {
+    topbarEmail.value = user.email || 'user@innerly.app'
+    topbarUsername.value = user.username || ''
+  }
+  document.addEventListener('mousedown', handleTopbarOutsideClick)
+
   // Reset streak to 0 for new users (no userId = new user)
   if (!userId) {
     streakDays.value = 0;
@@ -614,16 +519,11 @@ onMounted(async () => {
   // It opens automatically only after user completes a journal reflection.
 });
 
-const navItems = [
+const mainNavItems = computed(() => [
   {
     id: "kebun",
     label: props.lang === 'id' ? 'Kebun Innerly' : 'Innerly Garden',
     icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22V12M12 12C12 12 8 9 8 5a4 4 0 0 1 8 0c0 4-4 7-4 7z"/><path d="M5 22h14"/></svg>`,
-  },
-  {
-    id: "dashboard",
-    label: t.value.nav.dashboard,
-    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>`,
   },
   {
     id: "journal",
@@ -631,71 +531,11 @@ const navItems = [
     icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`,
     badge: "New",
   },
-  {
-    id: "mood",
-    label: t.value.nav.mood,
-    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>`,
-  },
-  {
-    id: "insights",
-    label: t.value.nav.insights,
-    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>`,
-  },
-  {
-    id: "growth",
-    label: t.value.nav.growth,
-    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>`,
-  },
-  {
-    id: "timeline",
-    label: t.value.nav.timeline,
-    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="2" x2="12" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>`,
-  },
-  {
-    id: "challenge",
-    label: t.value.nav.challenge,
-    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`,
-  },
-  {
-    id: "reminder",
-    label: t.value.nav.reminder,
-    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>`,
-  },
-];
-
-const moods = computed(() => t.value.moods);
-
-const weekMoods = computed(() => {
-  const days = t.value.weekDays;
-  const data = [
-    { emoji: "😔", val: 40, color: "#7c6ca8" },
-    { emoji: "😌", val: 65, color: "#6ab04c" },
-    { emoji: "😊", val: 80, color: "#f5a623" },
-    { emoji: "😤", val: 30, color: "#e74c3c" },
-    { emoji: "😊", val: 75, color: "#f5a623" },
-    { emoji: "🤩", val: 90, color: "#f39c12" },
-    { emoji: "😌", val: 70, color: "#6ab04c" },
-  ];
-  return data.map((d, i) => ({ ...d, day: days[i] }));
-});
-
-const todayChallenge = computed(() => {
-  const ch = t.value.challenges;
-  return ch[new Date().getDay() % ch.length];
-});
+]);
 
 const currentNavItem = computed(() =>
-  navItems.find((n) => n.id === activeView.value),
+  mainNavItems.value.find((n) => n.id === activeView.value),
 );
-
-// Main nav items for bottom bar (only the key ones)
-const mainNavItems = computed(() => [
-  navItems.find(n => n.id === 'kebun'),
-  navItems.find(n => n.id === 'dashboard'),
-  navItems.find(n => n.id === 'journal'),
-  navItems.find(n => n.id === 'mood'),
-  navItems.find(n => n.id === 'insights'),
-].filter(Boolean));
 
 const todayStr = computed(() => {
   return new Date().toLocaleDateString(
@@ -704,12 +544,10 @@ const todayStr = computed(() => {
       weekday: "long",
       month: "long",
       day: "numeric",
+      year: "numeric",
     },
   );
 });
-
-const greeting = computed(() => t.value.greeting(props.userName));
-const displayName = computed(() => t.value.displayName(props.userName));
 
 async function onJournalDone(data) {
   const dateKey = getTodayKey();
@@ -723,10 +561,15 @@ async function onJournalDone(data) {
     date: dateKey,
     mood: moodStr,
     moods: moodsArr,
-    trigger: data?.trigger ?? '',
+    title: data?.title ?? '',
+    description: data?.description ?? '',
+    trigger: (data?.description || data?.trigger) ?? '',
+    feeling: data?.feeling ?? '',
     wentWell: data?.wentWell ?? '',
     improve: data?.improve ?? '',
-    insight: data?.insight ?? '',
+    analysis: data?.analysis ?? '',
+    insight: (data?.analysis || data?.insight) ?? '',
+    conclusion: data?.conclusion ?? '',
     action: data?.action ?? '',
     created_at: new Date().toISOString(),
   };
@@ -778,6 +621,13 @@ async function onJournalDone(data) {
     }
   } else {
     console.warn('[Innerly] No userId found — reflection not saved to DB. User might not be logged in.');
+  }
+}
+
+function onReflectionUpdated(updatedRef) {
+  const idx = reflections.value.findIndex(r => r.date === updatedRef.date)
+  if (idx >= 0) {
+    reflections.value[idx] = updatedRef
   }
 }
 </script>
@@ -851,6 +701,27 @@ async function onJournalDone(data) {
   color: var(--accent);
   background: var(--accent-glow);
 }
+.lang-btn {
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Outfit", sans-serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--text-secondary);
+  background: var(--accent-soft);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.lang-btn:hover {
+  color: var(--accent);
+  background: var(--accent-glow);
+}
 .avatar {
   width: 36px;
   height: 36px;
@@ -863,6 +734,53 @@ async function onJournalDone(data) {
   align-items: center;
   justify-content: center;
 }
+
+/* ── Topbar Profile Dropdown ── */
+.topbar-profile-dropdown {
+  position: fixed;
+  top: 62px;
+  right: 16px;
+  left: auto !important;
+}
+.kb-profile-dropdown {
+  position: absolute;
+  width: 290px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.2);
+  z-index: 300;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.kb-profile-header { display: flex; align-items: center; gap: 12px; }
+.kb-profile-avatar-lg {
+  width: 48px; height: 48px; border-radius: 50%;
+  background: linear-gradient(135deg, #7c6ca8, #c084fc);
+  color: white; font-size: 1.2rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; border: 2px solid var(--accent);
+}
+.kb-profile-info { display: flex; flex-direction: column; gap: 2px; }
+.kb-profile-username { font-size: 0.95rem; font-weight: 700; color: var(--text-primary); }
+.kb-profile-email { font-size: 0.78rem; color: var(--text-muted); }
+.kb-profile-divider { height: 1px; background: var(--border); }
+.kb-profile-section { display: flex; flex-direction: column; gap: 4px; }
+.kb-profile-field-label { font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.kb-profile-field-value { font-size: 0.85rem; color: var(--text-primary); }
+.kb-profile-change-btn { font-size: 0.75rem; color: var(--accent); font-weight: 600; background: none; border: none; cursor: pointer; text-align: left; padding: 0; margin-top: 2px; width: fit-content; }
+.kb-profile-change-btn:hover { text-decoration: underline; }
+.kb-profile-edit-row { display: flex; gap: 6px; margin-top: 6px; }
+.kb-profile-input { flex: 1; background: var(--bg-base); border: 1.5px solid var(--border); border-radius: 8px; padding: 6px 10px; font-size: 0.8rem; color: var(--text-primary); outline: none; font-family: 'Outfit', sans-serif; }
+.kb-profile-input:focus { border-color: var(--accent); }
+.kb-profile-save-btn { background: var(--accent); color: white; border: none; border-radius: 8px; padding: 6px 12px; font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: opacity 0.15s; font-family: 'Outfit', sans-serif; }
+.kb-profile-save-btn:hover { opacity: 0.85; }
+.kb-profile-logout-btn { background: rgba(124, 108, 168, 0.1); border: 1.5px solid rgba(124, 108, 168, 0.25); border-radius: 8px; padding: 8px; font-size: 0.82rem; font-weight: 600; color: var(--accent); cursor: pointer; transition: background 0.15s; font-family: 'Outfit', sans-serif; }
+.kb-profile-logout-btn:hover { background: rgba(124, 108, 168, 0.18); }
+.profile-drop-enter-active, .profile-drop-leave-active { transition: opacity 0.18s ease, transform 0.18s ease; }
+.profile-drop-enter-from, .profile-drop-leave-to { opacity: 0; transform: translateY(-8px) scale(0.97); }
 
 /* ── Content ── */
 .content {
@@ -1202,5 +1120,45 @@ async function onJournalDone(data) {
 .main {
   padding-bottom: 72px;
 }
+
+/* ── Already reflected toast ── */
+.reflection-done-toast {
+  position: fixed;
+  bottom: 90px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #faf8ff;
+  border: 1px solid rgba(124, 108, 168, 0.2);
+  border-radius: 16px;
+  padding: 14px 18px;
+  box-shadow: 0 8px 32px rgba(80, 40, 180, 0.18);
+  z-index: 9999;
+  max-width: 320px;
+  width: calc(100% - 48px);
+}
+.reflection-done-toast.is-dark {
+  background: #1a1530;
+  border-color: rgba(167, 139, 250, 0.25);
+}
+.toast-icon { font-size: 1.3rem; flex-shrink: 0; }
+.toast-body { display: flex; flex-direction: column; gap: 2px; }
+.toast-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-family: 'Outfit', sans-serif;
+}
+.toast-sub {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-family: 'Outfit', sans-serif;
+}
+.toast-pop-enter-active { transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.34, 1.4, 0.64, 1); }
+.toast-pop-leave-active { transition: opacity 0.3s ease, transform 0.3s ease; }
+.toast-pop-enter-from { opacity: 0; transform: translateX(-50%) translateY(12px) scale(0.95); }
+.toast-pop-leave-to { opacity: 0; transform: translateX(-50%) translateY(6px); }
 
 </style>

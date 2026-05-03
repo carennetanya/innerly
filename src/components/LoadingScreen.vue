@@ -121,7 +121,7 @@
         <Transition name="skip-fade">
           <div v-if="phase >= 6" class="ls-login-wrap">
             <button class="ls-login-btn" :class="{ 'is-dark': isDark }" @click="handleLoginClick">
-              Sudah punya akun? <strong>Masuk</strong>
+              Already have an account? <strong>Sign In</strong>
             </button>
           </div>
         </Transition>
@@ -1315,7 +1315,7 @@ onMounted(async () => {
   font-weight: 300;
   font-size: 0.72rem;
   letter-spacing: 0.22em;
-  color: rgba(106, 176, 76, 0.7);
+  color: rgba(72, 130, 45, 0.9);
   margin-top: 4px;
   text-transform: uppercase;
 }
@@ -1816,7 +1816,7 @@ onMounted(async () => {
   background: transparent;
   border: none;
   font-size: 0.82rem;
-  color: rgba(180, 170, 220, 0.85);
+  color: rgba(74, 63, 122, 0.85);
   cursor: pointer;
   padding: 6px 12px;
   border-radius: 20px;
@@ -1825,7 +1825,7 @@ onMounted(async () => {
   text-underline-offset: 3px;
 }
 .ls-login-btn:hover {
-  color: rgba(210, 200, 255, 1);
+  color: rgba(74, 63, 122, 1);
   background: rgba(124, 108, 168, 0.15);
 }
 .ls-login-btn.is-dark {

@@ -58,7 +58,7 @@
         :data-dark="isDark"
         @click="emitDoneOnce(selectedLang)"
       >
-        Lewati Intro ↗
+        {{ selectedLang === 'id' ? 'Lewati Intro ↗' : 'Skip Intro ↗' }}
       </span>
     </Transition>
   </div>

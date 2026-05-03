@@ -178,27 +178,17 @@
               <div class="nm-actions">
                 <button
                   class="nm-btn-primary"
-                  @click="handleSpreadNext(0)"
-                  :disabled="!pageOverflowing[0]"
-                >
-                  <span>{{ t.nextPage }}</span>
-                  <svg
-                    width="15"
-                    height="15"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2.5"
-                  >
-                    <path d="M5 12h14M12 5l7 7-7 7" />
-                  </svg>
-                </button>
-                <button
-                  class="nm-btn-done"
                   @click="handleDone"
                   :disabled="pages[0].trim().length === 0"
                 >
-                  {{ t.letsBegin }}
+                  <span>{{ t.letsBegin }}</span>
+                </button>
+                <button
+                  class="nm-btn-done"
+                  @click="handleSpreadNext(0)"
+                  :disabled="!pageOverflowing[0]"
+                >
+                  {{ t.nextPage }}
                 </button>
                 <button class="nm-btn-ghost" @click="goBackToPage1">
                   ← back
@@ -230,30 +220,20 @@
               <div class="nm-actions">
                 <button
                   class="nm-btn-primary"
+                  @click="handleDone"
+                  :disabled="allPagesEmpty"
+                >
+                  <span>{{ t.doneBegin }}</span>
+                </button>
+                <button
+                  class="nm-btn-done"
                   @click="handleSpreadNext(rightPageIndex)"
                   :disabled="
                     !rightOverflowing &&
                     pages[rightPageIndex]?.trim().length === 0
                   "
                 >
-                  <span>{{ t.nextPage }}</span>
-                  <svg
-                    width="15"
-                    height="15"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2.5"
-                  >
-                    <path d="M5 12h14M12 5l7 7-7 7" />
-                  </svg>
-                </button>
-                <button
-                  class="nm-btn-done"
-                  @click="handleDone"
-                  :disabled="allPagesEmpty"
-                >
-                  <span>{{ t.doneBegin }}</span>
+                  {{ t.nextPage }}
                 </button>
                 <button class="nm-btn-ghost" @click="goBackSpread">
                   ← back

@@ -18,18 +18,34 @@
         <span class="kb-brand-name">Innerly</span>
       </div>
 
-      <!-- Right: Streak -->
-      <div class="kb-streak-container">
-  <div class="kb-streak-main">
-    <img :src="headerStreakImg" alt="streak plant" class="kb-streak-plant-img" />
-    <span class="kb-streak-num">{{ streakDays }}</span>
-  </div>
-  <div class="kb-progress-box">
-    <div class="kb-progress-track">
-      <div class="kb-progress-fill" :style="{ width: streakProgress + '%' }"></div>
-    </div>
-  </div>
-</div>
+      <!-- Right: Controls + Streak -->
+      <div class="kb-header-right">
+        <button class="kb-header-lang-btn" @click="$emit('toggle-lang')" :title="lang === 'id' ? 'Switch to English' : 'Ganti ke Indonesia'">
+          {{ lang === 'id' ? 'Indonesia' : 'English' }}
+        </button>
+        <button class="kb-header-icon-btn" @click="$emit('toggle-theme')" :title="isDark ? 'Light mode' : 'Dark mode'">
+          <svg v-if="isDark" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+            <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+          </svg>
+          <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+        </button>
+        <div class="kb-streak-container">
+          <div class="kb-streak-main">
+            <img :src="headerStreakImg" alt="streak plant" class="kb-streak-plant-img" />
+            <span class="kb-streak-num">{{ streakDays }}</span>
+          </div>
+          <div class="kb-progress-box">
+            <div class="kb-progress-track">
+              <div class="kb-progress-fill" :style="{ width: streakProgress + '%' }"></div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Profile Dropdown -->
@@ -41,7 +57,7 @@
           </div>
           <div class="kb-profile-info">
             <div class="kb-profile-username">{{ userUsername || props.userName || 'User' }}</div>
-            <div class="kb-profile-email">{{ userEmail }}</div>
+            <div class="kb-profile-email">@{{ userUsername || props.userName || 'user' }}</div>
           </div>
         </div>
         <div class="kb-profile-divider"></div>
@@ -138,10 +154,18 @@
 
     <!-- FAB add button -->
     <div class="kb-fab-wrap">
-      <button class="kb-fab" :class="{ 'kb-fab-pulse': !props.hasReflectionToday }" @click="toggleGrowthPanel" :title="lang === 'id' ? 'Tambah Refleksi' : 'Add Reflection'">
+      <button class="kb-fab" :class="{ 'kb-fab-no-ref': !props.hasReflectionToday, 'kb-fab-done': props.hasReflectionToday && !hasWateredLocally, 'kb-fab-watered': hasWateredLocally }" @click="toggleGrowthPanel" :title="lang === 'id' ? 'Tambah Refleksi' : 'Add Reflection'">
         <img alt="scope" src="/scope.png" class="kb-fab-scope" />
         <span class="kb-fab-plus">+</span>
       </button>
+      <div v-if="!props.justRegistered && (!props.hasReflectionToday || (props.hasReflectionToday && !hasWateredLocally))" class="kb-fab-chat-bubble">
+        <span class="kb-fab-chat-text">
+          {{ lang === 'id'
+            ? (!props.hasReflectionToday ? 'Kamu belum isi refleksi hari ini loh!' : 'Jangan lupa siram tanamanmu hari ini!')
+            : (!props.hasReflectionToday ? 'You haven\'t filled reflection today yet!' : 'Don\'t forget to water your plant today!')
+          }}
+        </span>
+      </div>
       <span class="kb-fab-label">{{ lang === 'id' ? 'Tambah Refleksi' : 'Add Reflection' }}</span>
     </div>
 
@@ -172,7 +196,11 @@
           <!-- Banner: no reflection today (show above everything) -->
           <Transition name="hint-fade">
             <div v-if="!props.hasReflectionToday && !props.justRegistered && !hasWateredLocally" class="kb-no-ref-banner">
-              <span class="kb-no-ref-icon">📝</span>
+              <span class="kb-no-ref-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                </svg>
+              </span>
               <div class="kb-no-ref-text">
                 <strong>{{ lang === 'id' ? 'Belum ada refleksi hari ini' : 'No reflection yet today' }}</strong>
                 <span>{{ lang === 'id' ? 'Buat refleksi dulu sebelum menyiram tanamanmu.' : 'Create a reflection before watering your plant.' }}</span>
@@ -326,10 +354,13 @@
             </div>
             <button class="kb-popup-close" @click="closePopup">✕</button>
           </div>
-          <div class="kb-popup-body" v-if="popup.reflection">
-            <!-- Show all moods as flower images -->
+          <!-- View mode -->
+          <div class="kb-popup-body" v-if="popup.reflection && !editMode">
+            <div class="kb-popup-title-entry" v-if="popup.reflection.title">
+              {{ popup.reflection.title }}
+            </div>
             <div class="kb-popup-row" v-if="popup.reflection.moods?.length || popup.reflection.mood">
-              <span class="kb-popup-label">{{ lang === 'id' ? 'Mood' : 'Mood' }}:</span>
+              <span class="kb-popup-label">{{ lang === 'id' ? '💜 Perasaan' : '💜 Feeling' }}:</span>
               <div class="kb-popup-moods-row">
                 <template v-if="popup.reflection.moods && popup.reflection.moods.length > 0">
                   <div v-for="(mLabel, mi) in popup.reflection.moods" :key="mi" class="kb-popup-mood-item">
@@ -343,29 +374,81 @@
                 </div>
               </div>
             </div>
-            <div class="kb-popup-row" v-if="popup.reflection.trigger">
-              <span class="kb-popup-label">{{ lang === 'id' ? 'Kejadian' : 'What happened' }}:</span>
-              <span>{{ popup.reflection.trigger }}</span>
+            <div class="kb-popup-row" v-if="popup.reflection.feeling">
+              <span class="kb-popup-label">{{ lang === 'id' ? 'Deskripsi perasaan' : 'Feeling detail' }}:</span>
+              <span>{{ popup.reflection.feeling }}</span>
+            </div>
+            <div class="kb-popup-row" v-if="popup.reflection.description || popup.reflection.trigger">
+              <span class="kb-popup-label">{{ lang === 'id' ? '📖 Deskripsi' : '📖 Description' }}:</span>
+              <span>{{ popup.reflection.description || popup.reflection.trigger }}</span>
             </div>
             <div class="kb-popup-row" v-if="popup.reflection.wentWell">
-              <span class="kb-popup-label">{{ lang === 'id' ? 'Yang baik' : 'Went well' }}:</span>
+              <span class="kb-popup-label">{{ lang === 'id' ? '✅ Kontribusi positif' : '✅ Positive contribution' }}:</span>
               <span>{{ popup.reflection.wentWell }}</span>
             </div>
             <div class="kb-popup-row" v-if="popup.reflection.improve">
-              <span class="kb-popup-label">{{ lang === 'id' ? 'Perlu diperbaiki' : 'Improve' }}:</span>
+              <span class="kb-popup-label">{{ lang === 'id' ? '🔧 Kontribusi negatif' : '🔧 Negative contribution' }}:</span>
               <span>{{ popup.reflection.improve }}</span>
             </div>
-            <div class="kb-popup-row" v-if="popup.reflection.insight">
-              <span class="kb-popup-label">{{ lang === 'id' ? 'Insight' : 'Insight' }}:</span>
-              <span>{{ popup.reflection.insight }}</span>
+            <div class="kb-popup-row" v-if="popup.reflection.analysis || popup.reflection.insight">
+              <span class="kb-popup-label">{{ lang === 'id' ? '🔍 Analisis' : '🔍 Analysis' }}:</span>
+              <span>{{ popup.reflection.analysis || popup.reflection.insight }}</span>
+            </div>
+            <div class="kb-popup-row" v-if="popup.reflection.conclusion">
+              <span class="kb-popup-label">{{ lang === 'id' ? '💡 Kesimpulan' : '💡 Conclusion' }}:</span>
+              <span>{{ popup.reflection.conclusion }}</span>
             </div>
             <div class="kb-popup-row" v-if="popup.reflection.action">
-              <span class="kb-popup-label">{{ lang === 'id' ? 'Action Plan' : 'Action Plan' }}:</span>
+              <span class="kb-popup-label">{{ lang === 'id' ? '🎯 Rencana Tindakan' : '🎯 Action Plan' }}:</span>
               <span>{{ popup.reflection.action }}</span>
             </div>
           </div>
-          <button class="kb-popup-edit-btn" @click="$emit('start-journal'); closePopup()">
-            {{ lang === 'id' ? 'Edit / Tambah Lagi' : 'Edit / Add More' }}
+
+          <!-- Edit mode -->
+          <div class="kb-popup-edit-form" v-if="popup.reflection && editMode">
+            <div class="kb-edit-save-status" v-if="editAutoSaving">
+              {{ lang === 'id' ? '💾 Menyimpan...' : '💾 Saving...' }}
+            </div>
+            <div class="kb-edit-field">
+              <label>{{ lang === 'id' ? 'Judul' : 'Title' }}</label>
+              <input v-model="editDraft.title" class="kb-edit-input" type="text" />
+            </div>
+            <div class="kb-edit-field">
+              <label>{{ lang === 'id' ? '📖 Deskripsi' : '📖 Description' }}</label>
+              <textarea v-model="editDraft.description" class="kb-edit-textarea" rows="3"></textarea>
+            </div>
+            <div class="kb-edit-field">
+              <label>{{ lang === 'id' ? '💜 Deskripsi perasaan' : '💜 Feeling detail' }}</label>
+              <textarea v-model="editDraft.feeling" class="kb-edit-textarea" rows="2"></textarea>
+            </div>
+            <div class="kb-edit-field">
+              <label>{{ lang === 'id' ? '✅ Kontribusi positif' : '✅ Positive contribution' }}</label>
+              <textarea v-model="editDraft.wentWell" class="kb-edit-textarea" rows="2"></textarea>
+            </div>
+            <div class="kb-edit-field">
+              <label>{{ lang === 'id' ? '🔧 Kontribusi negatif' : '🔧 Negative contribution' }}</label>
+              <textarea v-model="editDraft.improve" class="kb-edit-textarea" rows="2"></textarea>
+            </div>
+            <div class="kb-edit-field">
+              <label>{{ lang === 'id' ? '🔍 Analisis' : '🔍 Analysis' }}</label>
+              <textarea v-model="editDraft.analysis" class="kb-edit-textarea" rows="2"></textarea>
+            </div>
+            <div class="kb-edit-field">
+              <label>{{ lang === 'id' ? '💡 Kesimpulan' : '💡 Conclusion' }}</label>
+              <textarea v-model="editDraft.conclusion" class="kb-edit-textarea" rows="2"></textarea>
+            </div>
+            <div class="kb-edit-field">
+              <label>{{ lang === 'id' ? '🎯 Rencana Tindakan' : '🎯 Action Plan' }}</label>
+              <textarea v-model="editDraft.action" class="kb-edit-textarea" rows="2"></textarea>
+            </div>
+          </div>
+
+          <!-- Bottom actions -->
+          <button v-if="!editMode" class="kb-popup-edit-btn" @click="enterEditMode">
+            {{ lang === 'id' ? 'Edit / Lihat Lebih' : 'Edit / See More' }}
+          </button>
+          <button v-else class="kb-edit-cancel-btn" @click="cancelEdit">
+            {{ lang === 'id' ? '← Selesai edit' : '← Done editing' }}
           </button>
         </div>
       </div>
@@ -409,12 +492,34 @@
         </div>
       </div>
     </Transition>
+
+    <!-- Warning: Already reflected today -->
+    <Transition name="kb-popup">
+      <div class="kb-popup-overlay" v-if="showReflectionAlreadyDoneWarning" @click.self="closeReflectionWarning">
+        <div class="kb-reflection-warning">
+          <div class="kb-reflection-warning-icon">🌱</div>
+          <div class="kb-reflection-warning-title">
+            {{ lang === 'id' ? "Sudah Refleksi Hari Ini!" : "You've already reflected today!" }}
+          </div>
+          <div class="kb-reflection-warning-message">
+            {{ lang === 'id' 
+              ? "Kamu sudah membuat refleksi untuk hari ini. Datang lagi besok untuk menjaga streakmu tetap hidup! 🌱" 
+              : "You've already made a reflection for today. Come back tomorrow to keep your streak going! 🌱" 
+            }}
+          </div>
+          <button class="kb-reflection-warning-btn" @click="closeReflectionWarning">
+            {{ lang === 'id' ? 'OK, Mengerti' : "Got It" }}
+          </button>
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch} from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { authService } from '../services/auth.js'
+import { reflectionService } from '../services/reflection.js'
 
 const props = defineProps({
   isDark: Boolean,
@@ -429,7 +534,7 @@ const props = defineProps({
   hasReflectionToday: { type: Boolean, default: false }, // Whether user already has reflection today
 })
 
-const emit = defineEmits(['start-journal', 'logout', 'watered'])
+const emit = defineEmits(['start-journal', 'logout', 'watered', 'reflection-updated', 'toggle-theme', 'toggle-lang'])
 
 // Open garden popup when triggered from parent (after journal done)
 // Always open - let the panel itself show appropriate content
@@ -657,7 +762,66 @@ function openPopup(day, idx) {
 
 function closePopup() {
   popup.value = { show: false, day: null, idx: null, reflection: null }
+  editMode.value = false
+  editDraft.value = {}
 }
+
+// Edit mode
+const editMode = ref(false)
+const editDraft = ref({})
+const editAutoSaving = ref(false)
+
+function enterEditMode() {
+  const r = popup.value.reflection
+  editDraft.value = {
+    title: r?.title ?? '',
+    description: (r?.description || r?.trigger) ?? '',
+    feeling: r?.feeling ?? '',
+    wentWell: r?.wentWell ?? '',
+    improve: r?.improve ?? '',
+    analysis: (r?.analysis || r?.insight) ?? '',
+    conclusion: r?.conclusion ?? '',
+    action: r?.action ?? '',
+  }
+  editMode.value = true
+}
+
+function cancelEdit() {
+  editMode.value = false
+  editDraft.value = {}
+}
+
+// Debounced real-time auto-save
+let _saveTimer = null
+watch(editDraft, (draft) => {
+  if (!editMode.value || !popup.value.reflection) return
+  clearTimeout(_saveTimer)
+  editAutoSaving.value = true
+  _saveTimer = setTimeout(async () => {
+    try {
+      const updatedRef = {
+        ...popup.value.reflection,
+        ...draft,
+        trigger: draft.description || draft.trigger || popup.value.reflection?.trigger || '',
+        insight: draft.analysis || draft.insight || popup.value.reflection?.insight || '',
+      }
+      try {
+        const existing = JSON.parse(localStorage.getItem('innerly_reflections') || '[]')
+        const updated = existing.map(r => r.date === updatedRef.date ? updatedRef : r)
+        localStorage.setItem('innerly_reflections', JSON.stringify(updated))
+      } catch {}
+      const user = authService.getUser()
+      const userId = user && (user.id || user._id)
+      if (userId) {
+        try { await reflectionService.saveReflection(userId, updatedRef) } catch {}
+      }
+      popup.value = { ...popup.value, reflection: updatedRef }
+      emit('reflection-updated', updatedRef)
+    } finally {
+      editAutoSaving.value = false
+    }
+  }, 1200)
+}, { deep: true })
 
 function formatPopupDate(dateStr) {
   if (!dateStr) return ''
@@ -723,6 +887,9 @@ const isLoadingWateredState = ref(false); // tidak perlu loading karena localSto
 const showFlowerPicker = ref(false)
 const tempFlower = ref(null)
 const chosenFlower = ref(null) // Will be loaded from DB in onMounted; fallback to localStorage
+
+// ── Already reflected today warning ──
+const showReflectionAlreadyDoneWarning = ref(false)
 
 const flowerOptions = [
   { key: 'happy',      img: '/happy1.png',      label: 'Happy',      labelId: 'Senang'      },
@@ -1040,8 +1207,16 @@ function onLogout() {
 }
 
 function onPlantReflection() {
+  if (props.hasReflectionToday) {
+    showReflectionAlreadyDoneWarning.value = true
+    return
+  }
   growthPanelOpen.value = false
   emit('start-journal')
+}
+
+function closeReflectionWarning() {
+  showReflectionAlreadyDoneWarning.value = false
 }
 </script>
 
@@ -1131,6 +1306,45 @@ function onPlantReflection() {
 
 /* Right: streak */
 /* Update atau Tambahkan CSS ini */
+.kb-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.kb-header-lang-btn {
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: none;
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  background: var(--accent-soft);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.kb-header-lang-btn:hover {
+  color: var(--accent);
+  background: var(--accent-glow);
+}
+.kb-header-icon-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  background: var(--accent-soft);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.kb-header-icon-btn:hover {
+  color: var(--accent);
+  background: var(--accent-glow);
+}
 .kb-streak-container {
   display: flex;
   flex-direction: column;
@@ -1580,12 +1794,43 @@ function onPlantReflection() {
   gap: 0;
   cursor: pointer;
   box-shadow: 0 6px 24px rgba(76, 175, 80, 0.5);
-  transition: transform 0.18s, box-shadow 0.18s;
+  transition: transform 0.18s, box-shadow 0.18s, background 0.3s;
   position: relative;
-  animation: fab-blink 2s ease-in-out infinite;
 }
 
-@keyframes fab-blink {
+/* Belum refleksi hari ini → kedip merah */
+.kb-fab.kb-fab-no-ref {
+  background: linear-gradient(135deg, #e53935 0%, #ef9a9a 100%);
+  box-shadow: 0 6px 24px rgba(229, 57, 53, 0.5);
+  animation: fab-blink-red 1.4s ease-in-out infinite;
+}
+
+/* Sudah siram hari ini → hijau solid, tidak kedip */
+.kb-fab.kb-fab-watered {
+  background: linear-gradient(135deg, #4caf50 0%, #81c784 100%);
+  box-shadow: 0 6px 24px rgba(76, 175, 80, 0.4);
+  animation: none;
+}
+
+/* Sudah refleksi hari ini → kedip hijau */
+.kb-fab.kb-fab-done {
+  background: linear-gradient(135deg, #4caf50 0%, #81c784 100%);
+  box-shadow: 0 6px 24px rgba(76, 175, 80, 0.5);
+  animation: fab-blink-green 2s ease-in-out infinite;
+}
+
+@keyframes fab-blink-red {
+  0%, 100% {
+    box-shadow: 0 6px 24px rgba(229, 57, 53, 0.5);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 6px 32px rgba(229, 57, 53, 0.9), 0 0 24px rgba(229, 57, 53, 0.5);
+    transform: scale(1.07);
+  }
+}
+
+@keyframes fab-blink-green {
   0%, 100% {
     box-shadow: 0 6px 24px rgba(76, 175, 80, 0.5);
     transform: scale(1);
@@ -1623,6 +1868,44 @@ function onPlantReflection() {
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
+
+.kb-fab-chat-bubble {
+  position: absolute;
+  right: calc(100% + 12px);
+  top: 50%;
+  transform: translateY(-50%);
+  width: 220px;
+  padding: 12px 16px;
+  border-radius: 18px;
+  background: rgba(255, 246, 238, 0.98);
+  color: #1f2937;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.16);
+  font-size: 0.82rem;
+  line-height: 1.35;
+  text-align: left;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.kb-fab-chat-bubble::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: -10px;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-top: 8px solid transparent;
+  border-bottom: 8px solid transparent;
+  border-left: 10px solid rgba(255, 246, 238, 0.98);
+}
+.kb-fab-chat-text {
+  display: block;
+  font-weight: 600;
+  text-align: center;
+}
+
 /* FAB pulse animation when no reflection today */
 @keyframes fab-pulse {
   0%, 100% { box-shadow: 0 8px 32px rgba(124, 108, 168, 0.4), 0 0 0 0 rgba(124, 108, 168, 0.4); }
@@ -1795,6 +2078,88 @@ function onPlantReflection() {
 }
 .kb-popup-edit-btn:hover {
   background: rgba(124, 108, 168, 0.22);
+}
+.kb-popup-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 42vh;
+  overflow-y: auto;
+}
+.kb-edit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.kb-edit-field label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+.kb-edit-textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1.5px solid rgba(124, 108, 168, 0.25);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.85rem;
+  resize: vertical;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s;
+}
+.kb-edit-textarea:focus {
+  border-color: var(--accent);
+}
+.kb-edit-save-status {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-align: right;
+  min-height: 16px;
+}
+.kb-edit-input {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1.5px solid rgba(124, 108, 168, 0.25);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s;
+}
+.kb-edit-input:focus {
+  border-color: var(--accent);
+}
+.kb-edit-cancel-btn {
+  width: 100%;
+  padding: 10px;
+  border-radius: 50px;
+  background: transparent;
+  border: 1.5px solid rgba(124, 108, 168, 0.3);
+  color: var(--text-secondary);
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.kb-edit-cancel-btn:hover {
+  background: rgba(124, 108, 168, 0.08);
+}
+.kb-popup-title-entry {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: 10px;
+  padding: 6px 12px;
+  margin-bottom: 2px;
 }
 
 /* Transitions */
@@ -2211,8 +2576,11 @@ function onPlantReflection() {
   flex-wrap: wrap;
 }
 .kb-no-ref-icon {
-  font-size: 1.4rem;
   flex-shrink: 0;
+  color: #b45309;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .kb-no-ref-text {
   flex: 1;
@@ -2358,5 +2726,64 @@ function onPlantReflection() {
 .kb-flower-confirm-btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+/* ── Reflection Already Done Warning ── */
+.kb-reflection-warning {
+  background: var(--bg-card);
+  border-radius: 24px;
+  padding: 32px 24px;
+  max-width: 380px;
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+}
+
+.kb-reflection-warning-icon {
+  font-size: 3.5rem;
+  line-height: 1;
+}
+
+.kb-reflection-warning-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+.kb-reflection-warning-message {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-top: 8px;
+}
+
+.kb-reflection-warning-btn {
+  width: 100%;
+  padding: 12px 24px;
+  margin-top: 8px;
+  border-radius: 50px;
+  background: linear-gradient(135deg, #4caf50, #81c784);
+  border: none;
+  color: white;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: 'Outfit', sans-serif;
+  box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.kb-reflection-warning-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(76, 175, 80, 0.5);
+}
+
+.kb-reflection-warning-btn:active {
+  transform: translateY(0);
 }
 </style>

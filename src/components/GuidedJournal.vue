@@ -9,10 +9,7 @@
         v-for="(s, i) in steps"
         :key="i"
         class="gj-step-dot"
-        :class="{
-          active: currentStep === i,
-          done: currentStep > i,
-        }"
+        :class="{ active: currentStep === i, done: currentStep > i }"
         @click="currentStep > i ? (currentStep = i) : null"
         :title="s.title"
       >
@@ -24,47 +21,55 @@
     <div class="gj-book">
       <div class="gj-spine"></div>
 
+      <!-- LEFT PAGE (description / context) -->
       <div class="gj-page gj-page-left">
-        <div class="gj-page-lines">
-          <div v-for="i in 14" :key="i" class="gj-line"></div>
-        </div>
+        <div class="gj-page-lines"><div v-for="i in 14" :key="i" class="gj-line"></div></div>
         <div class="gj-page-content">
+
           <div v-if="currentStep === 0" class="gj-side-panel">
-            <span class="gj-layer-tag">{{ t.step1tag }}</span>
-            <h2 class="gj-page-title">{{ t.step1q }}</h2>
-            <p class="gj-page-hint">{{ t.step1hint }}</p>
-            <p class="gj-page-note">{{ t.step1note }}</p>
+            <span class="gj-layer-tag">{{ t.step0tag }}</span>
+            <h2 class="gj-page-title">{{ t.step0q }}</h2>
+            <p class="gj-page-hint">{{ t.step0hint }}</p>
           </div>
 
           <div v-else-if="currentStep === 1" class="gj-side-panel">
+            <span class="gj-layer-tag">{{ t.step1tag }}</span>
+            <h2 class="gj-page-title">{{ t.step1q }}</h2>
+            <p class="gj-page-hint">{{ t.step1hint }}</p>
+          </div>
+
+          <div v-else-if="currentStep === 2" class="gj-side-panel">
             <span class="gj-layer-tag">{{ t.step2tag }}</span>
             <h2 class="gj-page-title">{{ t.step2q }}</h2>
             <p class="gj-page-hint">{{ t.step2hint }}</p>
             <div v-if="answers.mood" class="gj-page-summary">
-              <span class="gj-mood-emoji-large">
-                <img v-if="answers.moodImg" :src="answers.moodImg" :alt="answers.mood" width="48" height="48" />
-              </span>
-              <p>{{ t.step2selected }}</p>
+              <img v-if="answers.moodImg" :src="answers.moodImg" :alt="answers.mood" width="48" height="48" />
               <p class="gj-page-selected">{{ answers.mood }}</p>
             </div>
           </div>
 
-          <div v-else-if="currentStep === 2" class="gj-side-panel">
+          <div v-else-if="currentStep === 3" class="gj-side-panel">
             <span class="gj-layer-tag">{{ t.step3tag }}</span>
             <h2 class="gj-page-title">{{ t.step3q }}</h2>
             <p class="gj-page-hint">{{ t.step3hint }}</p>
           </div>
 
-          <div v-else-if="currentStep === 3" class="gj-side-panel">
+          <div v-else-if="currentStep === 4" class="gj-side-panel">
             <span class="gj-layer-tag">{{ t.step4tag }}</span>
             <h2 class="gj-page-title">{{ t.step4q }}</h2>
             <p class="gj-page-hint">{{ t.step4hint }}</p>
           </div>
 
-          <div v-else-if="currentStep === 4" class="gj-side-panel">
+          <div v-else-if="currentStep === 5" class="gj-side-panel">
             <span class="gj-layer-tag">{{ t.step5tag }}</span>
             <h2 class="gj-page-title">{{ t.step5q }}</h2>
             <p class="gj-page-hint">{{ t.step5hint }}</p>
+          </div>
+
+          <div v-else-if="currentStep === 6" class="gj-side-panel">
+            <span class="gj-layer-tag">{{ t.step6tag }}</span>
+            <h2 class="gj-page-title">{{ t.step6q }}</h2>
+            <p class="gj-page-hint">{{ t.step6hint }}</p>
           </div>
 
           <div v-else class="gj-side-panel gj-summary-side">
@@ -78,267 +83,172 @@
         <div class="gj-page-number">{{ leftPageNumber }}</div>
       </div>
 
+      <!-- RIGHT PAGE (input) -->
       <div class="gj-page gj-page-right">
-        <div class="gj-page-lines">
-          <div v-for="i in 14" :key="i" class="gj-line"></div>
-        </div>
+        <div class="gj-page-lines"><div v-for="i in 14" :key="i" class="gj-line"></div></div>
         <div class="gj-page-content">
+
+          <!-- Step 0: Title -->
           <div v-if="currentStep === 0" class="gj-step-content">
-            <textarea
-              v-model="answers.trigger"
-              class="gj-textarea"
-              :placeholder="t.step1ph"
-              rows="6"
+            <input
+              v-model="answers.title"
+              class="gj-title-input"
+              :placeholder="t.step0ph"
+              type="text"
               autofocus
-            ></textarea>
-            <div class="gj-char-count">
-              {{ t.step1chars(answers.trigger.length) }}
-            </div>
+            />
+            <div class="gj-char-count">{{ t.step0chars(answers.title.length) }}</div>
             <div class="gj-actions">
-              <button class="gj-btn-back" @click="$emit('back')">
-                {{ t.step1back }}
-              </button>
-              <button
-                class="gj-btn-next"
-                :disabled="answers.trigger.trim().length < 5"
-                @click="currentStep = 1"
-              >
-                {{ t.nextBtn }}
-              </button>
+              <button class="gj-btn-back" @click="$emit('back')">{{ t.step0back }}</button>
+              <button class="gj-btn-next" :disabled="answers.title.trim().length < 3" @click="currentStep = 1">{{ t.nextBtn }}</button>
             </div>
           </div>
 
+          <!-- Step 1: Description -->
           <div v-else-if="currentStep === 1" class="gj-step-content">
+            <textarea v-model="answers.description" class="gj-textarea" :placeholder="t.step1ph" rows="6"></textarea>
+            <div class="gj-char-count">{{ t.step1chars(answers.description.length) }}</div>
+            <div class="gj-actions">
+              <button class="gj-btn-back" @click="currentStep = 0">{{ t.step1back }}</button>
+              <button class="gj-btn-next" :disabled="answers.description.trim().length < 5" @click="currentStep = 2">{{ t.nextBtn }}</button>
+            </div>
+          </div>
+
+          <!-- Step 2: Feeling -->
+          <div v-else-if="currentStep === 2" class="gj-step-content">
             <div class="gj-mood-grid">
-              <button
-                v-for="m in moodOptions"
-                :key="m.label"
-                class="gj-mood-btn"
-                :class="{ selected: answers.mood === m.label }"
-                :style="{ '--mc': m.color }"
-                @click="selectMood(m.label)"
-              >
-                <span class="gj-mood-emoji">
-                  <img :src="m.img" :alt="m.label" width="38" height="38" />
-                </span>
+              <button v-for="m in moodOptions" :key="m.label" class="gj-mood-btn"
+                :class="{ selected: answers.mood === m.label }" :style="{ '--mc': m.color }"
+                @click="selectMood(m.label)">
+                <span class="gj-mood-emoji"><img :src="m.img" :alt="m.label" width="38" height="38" /></span>
                 <span class="gj-mood-label">{{ m.label }}</span>
               </button>
             </div>
             <div class="gj-note-card">
-              <label class="gj-note-label">{{ t.moodNoteLabel }}</label>
-              <textarea
-                v-model="answers.moodNote"
-                class="gj-textarea gj-textarea-sm"
-                :placeholder="t.moodNotePh"
-                rows="3"
-              ></textarea>
+              <label class="gj-note-label">{{ t.step2feelingLabel }}</label>
+              <textarea v-model="answers.feeling" class="gj-textarea gj-textarea-sm" :placeholder="t.step2feelingPh" rows="3"></textarea>
             </div>
             <div class="gj-actions">
-              <button class="gj-btn-back" @click="currentStep = 0">
-                {{ t.step2back }}
-              </button>
-              <button
-                class="gj-btn-next"
-                :disabled="!answers.mood"
-                @click="currentStep = 2"
-              >
-                {{ t.nextBtn }}
-              </button>
+              <button class="gj-btn-back" @click="currentStep = 1">{{ t.step2back }}</button>
+              <button class="gj-btn-next" :disabled="!answers.mood" @click="currentStep = 3">{{ t.nextBtn }}</button>
             </div>
           </div>
 
-          <div v-else-if="currentStep === 2" class="gj-step-content">
+          <!-- Step 3: Evaluation -->
+          <div v-else-if="currentStep === 3" class="gj-step-content">
             <div class="gj-two-cols">
               <div class="gj-col gj-col-good">
                 <div class="gj-col-header">
                   <span class="gj-col-icon">✅</span>
-                  <span class="gj-col-title">{{ t.step3good }}</span>
+                  <span class="gj-col-title">{{ t.step3pos }}</span>
                 </div>
-                <textarea
-                  v-model="answers.wentWell"
-                  class="gj-textarea gj-textarea-sm"
-                  :placeholder="t.step3goodph"
-                  rows="4"
-                ></textarea>
+                <textarea v-model="answers.wentWell" class="gj-textarea gj-textarea-sm" :placeholder="t.step3posph" rows="4"></textarea>
               </div>
               <div class="gj-col gj-col-improve">
                 <div class="gj-col-header">
                   <span class="gj-col-icon">🔧</span>
-                  <span class="gj-col-title">{{ t.step3improve }}</span>
+                  <span class="gj-col-title">{{ t.step3neg }}</span>
                 </div>
-                <textarea
-                  v-model="answers.improve"
-                  class="gj-textarea gj-textarea-sm"
-                  :placeholder="t.step3improveph"
-                  rows="4"
-                ></textarea>
+                <textarea v-model="answers.improve" class="gj-textarea gj-textarea-sm" :placeholder="t.step3negph" rows="4"></textarea>
               </div>
             </div>
             <div class="gj-actions">
-              <button class="gj-btn-back" @click="currentStep = 1">
-                {{ t.step3back }}
-              </button>
-              <button
-                class="gj-btn-next"
-                :disabled="
-                  answers.wentWell.trim().length < 3 &&
-                  answers.improve.trim().length < 3
-                "
-                @click="currentStep = 3"
-              >
-                {{ t.nextBtn }}
-              </button>
+              <button class="gj-btn-back" @click="currentStep = 2">{{ t.step3back }}</button>
+              <button class="gj-btn-next"
+                :disabled="answers.wentWell.trim().length < 3 && answers.improve.trim().length < 3"
+                @click="currentStep = 4">{{ t.nextBtn }}</button>
             </div>
           </div>
 
-          <div v-else-if="currentStep === 3" class="gj-step-content">
-            <div class="gj-field-wrap" :class="{ 'caly-waiting': calyWaiting && !answers.insight }">
-              <Transition name="gj-fade">
-                <div v-if="calyWaiting && !answers.insight" class="gj-caly-badge">
-                  💬 Caly is waiting for your answer...
-                </div>
-              </Transition>
-              <textarea
-                ref="insightTextareaRef"
-                v-model="answers.insight"
-                class="gj-textarea"
-                :placeholder="calyWaiting ? t.calyWaitingPh : t.step4ph"
-                rows="6"
-              ></textarea>
-            </div>
-            <button
-              class="gj-ai-btn"
-              @click="fetchAiSuggestion"
-              :disabled="aiLoading"
-            >
-              <span class="gj-ai-icon" :class="{ spinning: aiLoading }">
-                {{ aiLoading ? '⟳' : '💬' }}
-              </span>
-              {{ aiLoading ? t.aiLoading : t.aiBtn }}
-            </button>
-            <Transition name="gj-fade">
-              <div v-if="aiSuggestion" class="gj-ai-suggestion">
-                <div class="gj-ai-suggestion-header">
-                  <span>{{ t.aiHeader }}</span>
-                  <button class="gj-ai-close" @click="dismissCaly">&times;</button>
-                </div>
-                <p class="gj-ai-suggestion-text">{{ aiSuggestion }}</p>
-                <button class="gj-ai-use-btn" @click="respondToCaly">
-                  {{ t.aiUsebtn }} ↩
-                </button>
-              </div>
-            </Transition>
-            <div class="gj-actions">
-              <button class="gj-btn-back" @click="currentStep = 2">
-                {{ t.step4back }}
-              </button>
-              <button
-                class="gj-btn-next"
-                :disabled="answers.insight.trim().length < 5"
-                @click="currentStep = 4"
-              >
-                {{ t.nextBtn }}
-              </button>
-            </div>
-          </div>
-
+          <!-- Step 4: Analysis -->
           <div v-else-if="currentStep === 4" class="gj-step-content">
+            <textarea v-model="answers.analysis" class="gj-textarea" :placeholder="t.step4ph" rows="7"></textarea>
+            <div class="gj-char-count">{{ answers.analysis.length }} {{ t.chars }}</div>
+            <div class="gj-actions">
+              <button class="gj-btn-back" @click="currentStep = 3">{{ t.step4back }}</button>
+              <button class="gj-btn-next" :disabled="answers.analysis.trim().length < 5" @click="currentStep = 5">{{ t.nextBtn }}</button>
+            </div>
+          </div>
+
+          <!-- Step 5: Conclusion -->
+          <div v-else-if="currentStep === 5" class="gj-step-content">
+            <textarea v-model="answers.conclusion" class="gj-textarea" :placeholder="t.step5ph" rows="7"></textarea>
+            <div class="gj-char-count">{{ answers.conclusion.length }} {{ t.chars }}</div>
+            <div class="gj-actions">
+              <button class="gj-btn-back" @click="currentStep = 4">{{ t.step5back }}</button>
+              <button class="gj-btn-next" :disabled="answers.conclusion.trim().length < 5" @click="currentStep = 6">{{ t.nextBtn }}</button>
+            </div>
+          </div>
+
+          <!-- Step 6: Action Plan -->
+          <div v-else-if="currentStep === 6" class="gj-step-content">
             <div class="gj-commitment-wrap">
-              <span class="gj-commitment-prefix">{{ t.step5prefix }}</span>
-              <textarea
-                v-model="answers.action"
-                class="gj-textarea gj-textarea-commitment"
-                :placeholder="t.step5ph"
-                rows="4"
-              ></textarea>
+              <span class="gj-commitment-prefix">{{ t.step6prefix }}</span>
+              <textarea v-model="answers.action" class="gj-textarea gj-textarea-commitment" :placeholder="t.step6ph" rows="4"></textarea>
             </div>
             <div class="gj-checklist" v-if="answers.action.trim().length > 0">
               <div class="gj-checklist-item">
-                <input
-                  type="checkbox"
-                  v-model="actionCommitted"
-                  id="commit-check"
-                  class="gj-check-input"
-                />
-                <label for="commit-check" class="gj-check-label">
-                  {{ t.step5commit }}
-                </label>
+                <input type="checkbox" v-model="actionCommitted" id="commit-check" class="gj-check-input" />
+                <label for="commit-check" class="gj-check-label">{{ t.step6commit }}</label>
               </div>
             </div>
             <div class="gj-actions">
-              <button class="gj-btn-back" @click="currentStep = 3">
-                {{ t.step5back }}
-              </button>
-              <button
-                class="gj-btn-next gj-btn-finish"
-                :disabled="answers.action.trim().length < 5"
-                @click="finishReflection"
-              >
-                {{ t.step5finish }}
-              </button>
+              <button class="gj-btn-back" @click="currentStep = 5">{{ t.step6back }}</button>
+              <button class="gj-btn-next gj-btn-finish" :disabled="answers.action.trim().length < 5" @click="finishReflection">{{ t.step6finish }}</button>
             </div>
           </div>
 
+          <!-- Summary -->
           <div v-else class="gj-summary-content">
             <div class="gj-summary-body">
-              <div class="gj-summary-section" v-if="answers.trigger">
+              <div class="gj-summary-title-box" v-if="answers.title">
+                <div class="gj-summary-section-label">{{ t.sum0label }}</div>
+                <div class="gj-summary-title-text">{{ answers.title }}</div>
+              </div>
+              <div class="gj-summary-section" v-if="answers.description">
                 <div class="gj-summary-section-label">{{ t.sum1label }}</div>
-                <div class="gj-summary-section-text">{{ answers.trigger }}</div>
+                <div class="gj-summary-section-text">{{ answers.description }}</div>
               </div>
               <div class="gj-summary-section" v-if="answers.mood">
                 <div class="gj-summary-section-label">{{ t.sum2label }}</div>
                 <div class="gj-summary-section-text">
-                  <img v-if="answers.moodImg" :src="answers.moodImg" :alt="answers.mood" width="32" height="32" style="vertical-align:middle;margin-right:6px;" />
+                  <img v-if="answers.moodImg" :src="answers.moodImg" :alt="answers.mood" width="28" height="28" style="vertical-align:middle;margin-right:6px;" />
                   {{ answers.mood }}
                 </div>
-                <div v-if="answers.moodNote" class="gj-summary-note">
-                  {{ answers.moodNote }}
-                </div>
+                <div v-if="answers.feeling" class="gj-summary-note">{{ answers.feeling }}</div>
               </div>
-              <div
-                class="gj-summary-two-col"
-                v-if="answers.wentWell || answers.improve"
-              >
+              <div class="gj-summary-two-col" v-if="answers.wentWell || answers.improve">
                 <div class="gj-summary-mini" v-if="answers.wentWell">
-                  <div class="gj-summary-section-label">{{ t.sum3good }}</div>
+                  <div class="gj-summary-section-label">{{ t.sum3pos }}</div>
                   <div class="gj-summary-section-text">{{ answers.wentWell }}</div>
                 </div>
                 <div class="gj-summary-mini" v-if="answers.improve">
-                  <div class="gj-summary-section-label">{{ t.sum3improve }}</div>
+                  <div class="gj-summary-section-label">{{ t.sum3neg }}</div>
                   <div class="gj-summary-section-text">{{ answers.improve }}</div>
                 </div>
               </div>
-              <div class="gj-summary-section" v-if="answers.insight">
+              <div class="gj-summary-section" v-if="answers.analysis">
                 <div class="gj-summary-section-label">{{ t.sum4label }}</div>
-                <div class="gj-summary-section-text">{{ answers.insight }}</div>
+                <div class="gj-summary-section-text">{{ answers.analysis }}</div>
+              </div>
+              <div class="gj-summary-section" v-if="answers.conclusion">
+                <div class="gj-summary-section-label">{{ t.sum5label }}</div>
+                <div class="gj-summary-section-text">{{ answers.conclusion }}</div>
               </div>
               <div class="gj-summary-action-box" v-if="answers.action">
-                <div class="gj-summary-action-label">{{ t.sum5label }}</div>
-                <div class="gj-summary-action-text">
-                  {{ t.sum5prefix }} {{ answers.action }}
-                </div>
-                <div class="gj-summary-committed" v-if="actionCommitted">
-                  <span>{{ t.sumCommitted }}</span>
-                </div>
+                <div class="gj-summary-action-label">{{ t.sum6label }}</div>
+                <div class="gj-summary-action-text">{{ t.step6prefix }} {{ answers.action }}</div>
+                <div class="gj-summary-committed" v-if="actionCommitted"><span>{{ t.sumCommitted }}</span></div>
               </div>
             </div>
             <div class="gj-summary-actions">
-              <button
-                class="gj-btn-save"
-                @click="saveReminder"
-                v-if="answers.action"
-              >
-                {{ t.sumSave }}
-              </button>
-              <button class="gj-btn-new" @click="startNew">
-                {{ t.sumNew }}
-              </button>
-              <button class="gj-btn-back-dash" @click="$emit('back')">
-                {{ t.sumBack }}
-              </button>
+              <button class="gj-btn-save" @click="saveReminder" v-if="answers.action">{{ t.sumSave }}</button>
+              <button class="gj-btn-new" @click="startNew">{{ t.sumNew }}</button>
+              <button class="gj-btn-back-dash" @click="$emit('back')">{{ t.sumBack }}</button>
             </div>
             <div class="gj-saved-toast" v-if="savedToast">{{ t.savedToast }}</div>
           </div>
+
         </div>
         <div class="gj-page-number">{{ rightPageNumber }}</div>
       </div>
@@ -347,7 +257,7 @@
 </template>
 
 <script setup>
-import { ref, computed, nextTick } from "vue";
+import { ref, computed } from "vue";
 import { authService } from "../services/auth.js";
 import { commitmentService } from "../services/commitment.js";
 
@@ -359,73 +269,67 @@ const props = defineProps({
 
 const gjI18n = {
   en: {
-    step1tag: "Step 1 · The Trigger",
-    step1q: "What's one thing you'd like to reflect on today?",
-    step1hint: "Share any experience — it doesn't have to be perfect.",
-    step1note: "Write openly, just like a page in a journal.",
-    step1ph:
-      "Example: Today's class presentation didn't go as well as I hoped...",
+    step0tag: "Title",
+    step0q: "What title best describes your experience?",
+    step0hint: "Give your reflection a name — it helps you own the experience.",
+    step0ph: "e.g. My first presentation at work...",
+    step0chars: (n) => `${n} characters`,
+    step0back: "← Back",
+    step1tag: "Question 1 · Description",
+    step1q: "What exactly happened to me?",
+    step1hint: "Where and when did it happen, who was involved, and what did you do?",
+    step1ph: "Describe the situation as objectively and completely as possible...",
     step1chars: (n) => `${n} characters`,
-    step1back: "← Dashboard",
-    step2tag: "Step 2 · Mood Check",
-    step2q: "How were you feeling when it happened?",
-    step2hint: "Pick the mood that fits best, then add a short note.",
-    moodNoteLabel: "A little more about this mood",
-    moodNotePh: "Optional: how did this feeling show up for you?",
-    step2selected: "You chose:",
+    step1back: "← Back",
+    step2tag: "Question 2 · Feeling",
+    step2q: "What was I feeling during that situation?",
+    step2hint: "Select the mood that best fits, then describe your feelings in words.",
+    step2feelingLabel: "Describe your feelings in words",
+    step2feelingPh: "What emotions were present? How did your body feel?",
     step2back: "← Back",
-    step3tag: "Step 3 · The Evaluation",
-    step3q: "What went well, and what felt off?",
-    step3hint: "Separate facts from feelings — write it as it is.",
-    step3good: "What went well",
-    step3goodph:
-      "Example: The content I covered was clear and well-structured...",
-    step3improve: "What needs improvement",
-    step3improveph:
-      "Example: I didn't practice enough and got too nervous during Q&A...",
+    step3tag: "Question 3 · Evaluation",
+    step3q: "What did I contribute to the situation, both positively and negatively?",
+    step3hint: "Reflect on your own role — be honest about both sides.",
+    step3pos: "✅ Positive contribution",
+    step3posph: "What did you contribute positively to this situation?",
+    step3neg: "🔧 Negative contribution",
+    step3negph: "What did you contribute negatively or could have done better?",
     step3back: "← Back",
-    step4tag: "Step 4 · The Insight",
-    step4q: "Looking back, why do you think it happened?",
-    step4hint: "Dig deeper — look for root causes, not just symptoms.",
-    step4ph: "Write your thoughts here, or ask Caly for help...",
-    calyWaitingPh: "Caly is waiting for your answer... write it here 💬",
-    aiLoading: "Caly is thinking...",
-    aiBtn: "Ask Caly",
-    aiHeader: "💬 Caly has a question for you:",
-    aiUsebtn: "Answer Caly",
+    step4tag: "Question 4 · Analysis",
+    step4q: "What do I know that can help me understand this better?",
+    step4hint: "Draw on theory, academic literature, or insights from others.",
+    step4ph: "What knowledge or frameworks help explain what happened here?",
     step4back: "← Back",
-    step5tag: "Step 5 · The Action Plan",
-    step5q: "So, what's one small thing you'll do differently tomorrow?",
-    step5hint: "Small consistent commitments beat big plans that never happen.",
-    step5prefix: "Tomorrow, I will",
-    step5ph:
-      "...prepare presentation materials at least a day before and practice hard in front of a mirror.",
-    step5commit: "I'm committed to doing this tomorrow! 💪",
+    chars: "characters",
+    step5tag: "Question 5 · Conclusion",
+    step5q: "What did I learn about myself and this situation?",
+    step5hint: "Summarise the key lessons from this experience.",
+    step5ph: "The most important thing I learned from this experience is...",
     step5back: "← Back",
-    step5finish: "Finish Reflection 🎉",
-    nextBtn: "Lanjut",
+    step6tag: "Question 6 · Action Plan",
+    step6q: "If I faced a similar situation again, what would I do differently?",
+    step6hint: "Make a concrete commitment for next time.",
+    step6prefix: "Next time, I will",
+    step6ph: "...prepare more thoroughly, ask for help earlier, or communicate more clearly.",
+    step6commit: "I commit to this! 💪",
+    step6back: "← Back",
+    step6finish: "Finish Reflection 🎉",
+    nextBtn: "Next",
     sumTitle: "Reflection Complete!",
-    sumSub: "You're one step further today. Be proud of yourself! 🙌",
-    sum1label: "🌱 What was reflected",
-    sum2label: "💜 Feelings at the time",
-    sum3good: "✅ What went well",
-    sum3improve: "🔧 What needs improvement",
-    sum4label: "💡 Insight",
-    sum5label: "🎯 Tomorrow's Action Commitment",
-    sum5prefix: "Tomorrow, I will",
+    sumSub: "You've completed the Gibbs Reflective Cycle. Be proud of yourself! 🙌",
+    sum0label: "📌 Title",
+    sum1label: "📖 Description",
+    sum2label: "💜 Feeling",
+    sum3pos: "✅ Positive contribution",
+    sum3neg: "🔧 Negative contribution",
+    sum4label: "🔍 Analysis",
+    sum5label: "💡 Conclusion",
+    sum6label: "🎯 Action Plan",
     sumCommitted: "✅ You are committed!",
-    sumSave: "🔔 Save as tomorrow's reminder",
+    sumSave: "🔔 Save as reminder",
     sumNew: "✨ Start a new reflection",
-    sumBack: "← Back to Dashboard",
-    savedToast: "🔔 Reminder saved! Check tomorrow in Reminders.",
-    aiSystemPrompt: `You are an empathetic and wise self-reflection assistant. Help the user gain deeper insights about their experience using Gibbs' Reflective Cycle. Provide 2-3 guiding questions that help them find the root cause of the event. Use warm and supportive English. Keep it brief (3-4 sentences), as reflective questions — NOT direct answers. Don't use markdown or bullet points.`,
-    aiUserPrompt: (ctx) => `Please help me reflect based on this context:
-
-${ctx}
-
-Provide some guiding questions to help me explore why this happened.`,
-    aiError:
-      "Did you feel underprepared, or were there external factors beyond your control? What would you do differently if you faced this situation again?",
+    sumBack: "← Back to Garden",
+    savedToast: "🔔 Reminder saved!",
     moodOptions: [
       { img: "/happy.png", label: "Happy", color: "#f5a623" },
       { img: "/sad.png", label: "Sad", color: "#7c6ca8" },
@@ -440,74 +344,67 @@ Provide some guiding questions to help me explore why this happened.`,
     ],
   },
   id: {
-    step1tag: "Langkah 1 · The Trigger",
-    step1q: "Apa satu hal yang ingin kamu refleksikan hari ini?",
-    step1hint: "Tuangkan kejadian apa saja — tidak harus sempurna.",
-    step1note: "Tulis bebas, seperti halaman jurnalmu sendiri.",
-    step1ph: "Contoh: Hari ini presentasi di kelas terasa kurang maksimal...",
+    step0tag: "Judul",
+    step0q: "Judul apa yang paling menggambarkan pengalamanmu?",
+    step0hint: "Beri nama refleksimu — ini membantu kamu memiliki pengalaman itu.",
+    step0ph: "cth. Presentasi pertamaku di tempat kerja...",
+    step0chars: (n) => `${n} karakter`,
+    step0back: "← Kembali",
+    step1tag: "Pertanyaan 1 · Deskripsi",
+    step1q: "Apa yang sebenarnya terjadi padaku?",
+    step1hint: "Di mana dan kapan itu terjadi, siapa yang terlibat, dan apa yang kamu lakukan?",
+    step1ph: "Deskripsikan situasinya seobjektif dan selengkap mungkin...",
     step1chars: (n) => `${n} karakter`,
-    step1back: "← Dashboard",
-    step2tag: "Langkah 2 · Mood Check",
-    step2q: "Gimana perasaanmu pas kejadian itu?",
-    step2hint: "Pilih mood yang paling cocok, lalu tambahkan catatan singkat.",
-    moodNoteLabel: "Tambahkan sedikit tentang perasaan ini",
-    moodNotePh: "Opsional: bagaimana perasaan ini muncul untukmu?",
-    step2selected: "Kamu memilih:",
+    step1back: "← Kembali",
+    step2tag: "Pertanyaan 2 · Perasaan",
+    step2q: "Apa yang aku rasakan selama situasi itu?",
+    step2hint: "Pilih mood yang paling cocok, lalu gambarkan perasaanmu dengan kata-kata.",
+    step2feelingLabel: "Gambarkan perasaanmu dengan kata-kata",
+    step2feelingPh: "Emosi apa yang muncul? Bagaimana tubuhmu merasakannya?",
     step2back: "← Kembali",
-    step3tag: "Langkah 3 · The Evaluation",
-    step3q: "Apa yang berjalan lancar, dan apa yang terasa mengganjal?",
-    step3hint: "Pisahkan fakta dari perasaan — tulis apa adanya.",
-    step3good: "Yang berjalan baik",
-    step3goodph: "Contoh: Materi yang aku bawakan sudah runtut dan jelas...",
-    step3improve: "Yang perlu diperbaiki",
-    step3improveph:
-      "Contoh: Aku kurang latihan dan terlalu gugup saat sesi tanya jawab...",
+    step3tag: "Pertanyaan 3 · Evaluasi",
+    step3q: "Apa kontribusiku pada situasi ini, baik positif maupun negatif?",
+    step3hint: "Renungkan peranmu sendiri — jujur terhadap kedua sisi.",
+    step3pos: "✅ Kontribusi positif",
+    step3posph: "Apa yang kamu kontribusikan secara positif dalam situasi ini?",
+    step3neg: "🔧 Kontribusi negatif",
+    step3negph: "Apa yang kamu kontribusikan secara negatif atau bisa dilakukan lebih baik?",
     step3back: "← Kembali",
-    step4tag: "Langkah 4 · The Insight",
-    step4q: "Kalau dipikir lagi, kenapa hal itu bisa terjadi?",
-    step4hint:
-      "Gali lebih dalam — cari akar penyebabnya, bukan cuma gejalanya.",
-    step4ph: "Tulis pikiranmu di sini, atau tanya Caly untuk bantuan...",
-    calyWaitingPh: "Caly sedang menunggu jawabanmu... tulis di sini 💬",
-    aiLoading: "Caly sedang berpikir...",
-    aiBtn: "Tanya Caly",
-    aiHeader: "💬 Caly punya pertanyaan untukmu:",
-    aiUsebtn: "Tanggapi Caly",
+    step4tag: "Pertanyaan 4 · Analisis",
+    step4q: "Apa yang aku ketahui yang bisa membantuku memahami ini lebih baik?",
+    step4hint: "Manfaatkan teori, literatur akademik, atau wawasan dari orang lain.",
+    step4ph: "Pengetahuan atau kerangka apa yang membantu menjelaskan apa yang terjadi?",
     step4back: "← Kembali",
-    step5tag: "Langkah 5 · The Action Plan",
-    step5q: "Jadi, apa satu hal kecil yang akan kamu lakukan berbeda besok?",
-    step5hint:
-      "Komitmen kecil yang konsisten lebih kuat dari rencana besar yang tidak dijalankan.",
-    step5prefix: "Besok, aku akan",
-    step5ph:
-      "...menyiapkan materi presentasi minimal H-1 dan berlatih keras di depan cermin.",
-    step5commit: "Aku berkomitmen untuk melakukan ini besok! 💪",
+    chars: "karakter",
+    step5tag: "Pertanyaan 5 · Kesimpulan",
+    step5q: "Apa yang aku pelajari tentang diriku dan situasi ini?",
+    step5hint: "Rangkum pelajaran utama dari pengalaman ini.",
+    step5ph: "Hal terpenting yang aku pelajari dari pengalaman ini adalah...",
     step5back: "← Kembali",
-    step5finish: "Selesaikan Refleksi 🎉",
+    step6tag: "Pertanyaan 6 · Rencana Tindakan",
+    step6q: "Jika aku menghadapi situasi serupa lagi, apa yang akan aku lakukan berbeda?",
+    step6hint: "Buat komitmen konkret untuk lain kali.",
+    step6prefix: "Lain kali, aku akan",
+    step6ph: "...mempersiapkan lebih matang, meminta bantuan lebih awal, atau berkomunikasi lebih jelas.",
+    step6commit: "Aku berkomitmen untuk ini! 💪",
+    step6back: "← Kembali",
+    step6finish: "Selesaikan Refleksi 🎉",
     nextBtn: "Lanjut",
     sumTitle: "Refleksi Selesai!",
-    sumSub:
-      "Kamu sudah selangkah lebih maju hari ini. Bangga dengan dirimu sendiri! 🙌",
-    sum1label: "🌱 Apa yang direfleksikan",
-    sum2label: "💜 Perasaan saat itu",
-    sum3good: "✅ Yang berjalan baik",
-    sum3improve: "🔧 Yang perlu diperbaiki",
-    sum4label: "💡 Insight",
-    sum5label: "🎯 Komitmen Aksi Besok",
-    sum5prefix: "Besok, aku akan",
+    sumSub: "Kamu telah menyelesaikan Gibbs Reflective Cycle. Bangga dengan dirimu! 🙌",
+    sum0label: "📌 Judul",
+    sum1label: "📖 Deskripsi",
+    sum2label: "💜 Perasaan",
+    sum3pos: "✅ Kontribusi positif",
+    sum3neg: "🔧 Kontribusi negatif",
+    sum4label: "🔍 Analisis",
+    sum5label: "💡 Kesimpulan",
+    sum6label: "🎯 Rencana Tindakan",
     sumCommitted: "✅ Kamu sudah berkomitmen!",
-    sumSave: "🔔 Simpan sebagai pengingat besok",
+    sumSave: "🔔 Simpan sebagai pengingat",
     sumNew: "✨ Mulai refleksi baru",
-    sumBack: "← Kembali ke Dashboard",
-    savedToast: "🔔 Pengingat disimpan! Cek besok di Reminders.",
-    aiSystemPrompt: `Kamu adalah asisten refleksi diri yang empatik dan bijaksana. Bantu pengguna menggali insight lebih dalam tentang pengalaman mereka menggunakan Gibbs' Reflective Cycle. Berikan 2-3 pertanyaan pemandu yang membantu mereka menemukan akar penyebab dari kejadian tersebut. Gunakan bahasa Indonesia yang hangat dan supportif. Jawaban harus singkat (3-4 kalimat), berupa pertanyaan-pertanyaan reflektif, BUKAN jawaban langsung. Jangan gunakan markdown atau bullet points.`,
-    aiUserPrompt: (ctx) => `Tolong bantu aku berefleksi berdasarkan konteks ini:
-
-${ctx}
-
-Berikan beberapa pertanyaan pemandu untuk membantu aku menggali kenapa hal ini bisa terjadi.`,
-    aiError:
-      "Apakah kamu merasa kurang persiapan, atau ada faktor eksternal di luar kendalimu? Apa yang akan kamu lakukan berbeda jika menghadapi situasi ini lagi?",
+    sumBack: "← Kembali ke Kebun",
+    savedToast: "🔔 Pengingat disimpan!",
     moodOptions: [
       { img: "/happy.png", label: "Senang", color: "#f5a623" },
       { img: "/calm.png", label: "Tenang", color: "#6ab04c" },
@@ -528,45 +425,38 @@ const moodOptions = computed(() => t.value.moodOptions);
 const emit = defineEmits(["back", "done"]);
 
 const currentStep = ref(0);
-const aiLoading = ref(false);
-const aiSuggestion = ref("");
-const calyWaiting = ref(false);
-const insightTextareaRef = ref(null);
 const actionCommitted = ref(false);
 const savedToast = ref(false);
 
 const steps = [
-  { title: "The Trigger" },
-  { title: "Mood Check" },
-  { title: "The Evaluation" },
-  { title: "The Insight" },
-  { title: "The Action Plan" },
+  { title: "Title" },
+  { title: "Description" },
+  { title: "Feeling" },
+  { title: "Evaluation" },
+  { title: "Analysis" },
+  { title: "Conclusion" },
+  { title: "Action Plan" },
   { title: "Summary" },
 ];
 
 const answers = ref({
-  trigger: props.initialTrigger || "",
+  title: "",
+  description: props.initialTrigger || "",
   mood: "",
   moods: [],
   moodImg: "",
-  moodNote: "",
+  feeling: "",
   wentWell: "",
   improve: "",
-  insight: "",
+  analysis: "",
+  conclusion: "",
   action: "",
 });
 
-const progressPct = computed(
-  () => (currentStep.value / (steps.length - 1)) * 100,
-);
-
+const progressPct = computed(() => (currentStep.value / (steps.length - 1)) * 100);
 const pageNumber = computed(() => currentStep.value + 1);
-const leftPageNumber = computed(() =>
-  currentStep.value === 0 ? "i" : pageNumber.value,
-);
-const rightPageNumber = computed(() =>
-  currentStep.value === 0 ? "1" : pageNumber.value,
-);
+const leftPageNumber = computed(() => currentStep.value === 0 ? "i" : pageNumber.value);
+const rightPageNumber = computed(() => currentStep.value === 0 ? "1" : pageNumber.value);
 
 function selectMood(label) {
   const option = moodOptions.value.find((m) => m.label === label);
@@ -581,58 +471,8 @@ function selectMood(label) {
   }
 }
 
-async function fetchAiSuggestion() {
-  aiLoading.value = true;
-  aiSuggestion.value = "";
-  try {
-    const context = [
-      answers.value.trigger && `Trigger: ${answers.value.trigger}`,
-      answers.value.mood && `Mood: ${answers.value.mood}`,
-      answers.value.wentWell && `Went well: ${answers.value.wentWell}`,
-      answers.value.improve && `Needs improvement: ${answers.value.improve}`,
-    ]
-      .filter(Boolean)
-      .join("\n");
-
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 1000,
-        system: t.value.aiSystemPrompt,
-        messages: [
-          {
-            role: "user",
-            content: t.value.aiUserPrompt(context),
-          },
-        ],
-      }),
-    });
-    const data = await response.json();
-    const text = data.content?.find((b) => b.type === "text")?.text || "";
-    aiSuggestion.value = text.trim();
-  } catch (e) {
-    aiSuggestion.value = t.value.aiError;
-  } finally {
-    aiLoading.value = false;
-  }
-}
-
-function respondToCaly() {
-  calyWaiting.value = true;
-  aiSuggestion.value = "";
-  nextTick(() => { insightTextareaRef.value?.focus(); });
-}
-
-function dismissCaly() {
-  aiSuggestion.value = "";
-  calyWaiting.value = false;
-}
-
 async function finishReflection() {
-  currentStep.value = 5;
-  // Save committed action as tomorrow's reminder in localStorage
+  currentStep.value = 7;
   if (actionCommitted.value && answers.value.action.trim()) {
     const today = new Date();
     const todayKey = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
@@ -642,21 +482,24 @@ async function finishReflection() {
       moodImg: answers.value.moodImg || '',
       mood: answers.value.mood || '',
     };
-    // Save to localStorage (fallback)
     localStorage.setItem('innerly_reminder', JSON.stringify(reminderData));
-    // Save to DB
     try {
       const user = authService.getUser();
       if (user && user.id) {
         const saved = await commitmentService.saveCommitment(user.id, reminderData);
-        // Store DB id for later mark-done
         localStorage.setItem('innerly_reminder', JSON.stringify({ ...reminderData, dbId: saved.id }));
       }
     } catch (e) {
       console.warn('Could not save commitment to DB:', e);
     }
   }
-  emit("done", { ...answers.value, committed: actionCommitted.value });
+  // Emit with backward-compat aliases so DashboardView/App.vue keep working
+  emit("done", {
+    ...answers.value,
+    trigger: answers.value.description,
+    insight: answers.value.analysis,
+    committed: actionCommitted.value,
+  });
 }
 
 async function saveReminder() {
@@ -687,37 +530,20 @@ async function saveReminder() {
 
 function startNew() {
   answers.value = {
-    trigger: "",
+    title: "",
+    description: "",
     mood: "",
     moods: [],
-    moodEmoji: "",
-    moodNote: "",
+    moodImg: "",
+    feeling: "",
     wentWell: "",
     improve: "",
-    insight: "",
+    analysis: "",
+    conclusion: "",
     action: "",
   };
   actionCommitted.value = false;
-  aiSuggestion.value = "";
   currentStep.value = 0;
-}
-
-function getConfettiStyle(i) {
-  const colors = [
-    "#a78bfa",
-    "#f5a623",
-    "#6ab04c",
-    "#e74c3c",
-    "#3498db",
-    "#f39c12",
-  ];
-  const x = 5 + ((i * 83) % 90);
-  const delay = (i * 0.18) % 1.8;
-  return {
-    left: `${x}%`,
-    background: colors[i % colors.length],
-    animationDelay: `${delay}s`,
-  };
 }
 </script>
 
@@ -801,9 +627,9 @@ function getConfettiStyle(i) {
   user-select: none;
 }
 .gj-wrap.is-dark .gj-step-dot {
-  background: #0f0b1e;
-  border-color: rgba(167, 139, 250, 0.2);
-  color: rgba(180, 160, 255, 0.4);
+  background: #2a2245;
+  border-color: rgba(167, 139, 250, 0.6);
+  color: rgba(230, 220, 255, 1);
 }
 .gj-step-dot.done {
   background: rgba(124, 108, 168, 0.08);
@@ -913,6 +739,42 @@ function getConfettiStyle(i) {
   color: rgba(180, 160, 255, 0.55);
 }
 
+/* ── Title input ── */
+.gj-title-input {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1.5px solid rgba(124, 108, 168, 0.2);
+  border-radius: 12px;
+  padding: 14px 16px;
+  font-family: "Outfit", sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #2d1f6e;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.gj-title-input:focus {
+  border-color: #7c6ca8;
+  box-shadow: 0 0 0 3px rgba(124, 108, 168, 0.12);
+}
+.gj-wrap.is-dark .gj-title-input {
+  background: rgba(30, 20, 50, 0.6);
+  color: #ede8ff;
+  border-color: rgba(167, 139, 250, 0.2);
+}
+/* ── Summary title box ── */
+.gj-summary-title-box {
+  background: var(--accent-soft, rgba(124,108,168,0.08));
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin-bottom: 4px;
+}
+.gj-summary-title-text {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--accent, #5b4a9a);
+}
 /* ── Textarea ── */
 .gj-textarea {
   width: 100%;

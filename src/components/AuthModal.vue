@@ -2,7 +2,6 @@
   <Transition name="modal-fade">
     <div v-if="visible" class="auth-overlay" @click.self="close">
       <div class="auth-modal" :class="{ 'is-dark': isDark }">
-        <button class="auth-close" @click="close">×</button>
 
         <!-- Tab switcher -->
         <div class="auth-tabs">
@@ -14,7 +13,7 @@
               error = '';
             "
           >
-            Daftar
+            Register
           </button>
           <button
             class="auth-tab"
@@ -24,30 +23,30 @@
               error = '';
             "
           >
-            Masuk
+            Sign In
           </button>
         </div>
 
         <div class="auth-header">
           <h2>
-            {{ isLogin ? "Selamat Datang Kembali 👋" : "Buat Akun Innerly 🌱" }}
+            {{ isLogin ? "Welcome Back 👋" : "Create Your Innerly Account 🌱" }}
           </h2>
           <p>
             {{
               isLogin
-                ? "Masuk untuk melanjutkan perjalananmu"
-                : "Simpan kebunmu dan pantau progresmu dari waktu ke waktu"
+                ? "Sign in to continue your journey"
+                : "Save your garden and track your growth over time"
             }}
           </p>
         </div>
 
         <form @submit.prevent="handleSubmit" class="auth-form">
           <div v-if="!isLogin" class="form-group">
-            <label>Nama</label>
+            <label>Name</label>
             <input
               v-model="formData.name"
               type="text"
-              placeholder="Nama kamu"
+              placeholder="Your name"
               required
             />
           </div>
@@ -57,10 +56,10 @@
             <input
               v-model="formData.username"
               type="text"
-              placeholder="username_kamu"
+              placeholder="your_username"
               required
               pattern="[a-zA-Z0-9_]+"
-              title="Hanya huruf, angka, dan underscore"
+              title="Letters, numbers, and underscores only"
             />
           </div>
 
@@ -69,7 +68,7 @@
             <input
               v-model="formData.email"
               type="email"
-              placeholder="email@kamu.com"
+              placeholder="your@email.com"
               required
             />
           </div>
@@ -86,7 +85,7 @@
           </div>
 
           <div v-if="!isLogin" class="form-group">
-            <label>Konfirmasi Password</label>
+            <label>Confirm Password</label>
             <input
               v-model="formData.confirmPassword"
               type="password"
@@ -99,13 +98,13 @@
           <div v-if="error" class="auth-error">{{ error }}</div>
 
           <button type="submit" class="auth-submit" :disabled="loading">
-            {{ loading ? "Mohon tunggu..." : isLogin ? "Masuk" : "Buat Akun" }}
+            {{ loading ? "Please wait..." : isLogin ? "Sign In" : "Create Account" }}
           </button>
         </form>
 
         <div class="auth-footer">
           <p>
-            {{ isLogin ? "Belum punya akun?" : "Sudah punya akun?" }}
+            {{ isLogin ? "Don't have an account?" : "Already have an account?" }}
             <button
               @click="
                 isLogin = !isLogin;
@@ -113,7 +112,7 @@
               "
               class="auth-toggle"
             >
-              {{ isLogin ? "Daftar" : "Masuk" }}
+              {{ isLogin ? "Register" : "Sign In" }}
             </button>
           </p>
         </div>
@@ -176,15 +175,15 @@ const handleSubmit = async () => {
   // Client-side validation for register
   if (!isLogin.value) {
     if (!formData.username.trim()) {
-      error.value = "Username tidak boleh kosong.";
+      error.value = "Username cannot be empty.";
       return;
     }
     if (!/^[a-zA-Z0-9_]+$/.test(formData.username)) {
-      error.value = "Username hanya boleh huruf, angka, dan underscore.";
+      error.value = "Username can only contain letters, numbers, and underscores.";
       return;
     }
     if (formData.password !== formData.confirmPassword) {
-      error.value = "Password dan konfirmasi password tidak sama.";
+      error.value = "Passwords do not match.";
       return;
     }
   }
@@ -250,30 +249,7 @@ const handleSubmit = async () => {
   color: #ede8ff;
 }
 
-.auth-close {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  background: rgba(124, 108, 168, 0.1);
-  border: none;
-  font-size: 20px;
-  cursor: pointer;
-  color: #7c6ca8;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.2s;
-}
-.auth-close:hover {
-  background: rgba(124, 108, 168, 0.2);
-}
-.is-dark .auth-close {
-  color: #a78bfa;
-  background: rgba(167, 139, 250, 0.1);
-}
+
 
 /* Tabs */
 .auth-tabs {

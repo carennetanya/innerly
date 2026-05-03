@@ -40,22 +40,13 @@
         @done="onEvaluationDone"
         @back="stage = 'moodcheck'"
       />
-      <InsightScreen
-        v-else-if="stage === 'insight'"
-        key="insight"
-        :is-dark="isDark"
-        :lang="lang"
-        :context="insightContext"
-        @done="onInsightDone"
-        @back="stage = 'evaluation'"
-      />
       <ActionPlanScreen
         v-else-if="stage === 'actionplan'"
         key="actionplan"
         :is-dark="isDark"
         :lang="lang"
         @done="onActionPlanDone"
-        @back="stage = 'insight'"
+        @back="stage = 'evaluation'"
       />
       <SummaryScreen
         v-else-if="stage === 'summary'"
@@ -78,6 +69,7 @@
         :pending-reflection="pendingReflection"
         :db-reload-trigger="dbReloadTrigger"
         @toggle-theme="isDark = !isDark"
+        @toggle-lang="lang = lang === 'id' ? 'en' : 'id'"
         @logout="onLogout"
       />
     </Transition>
@@ -107,7 +99,6 @@ import MoodCheckScreen from "./components/MoodCheckScreen.vue";
 import DashboardView from "./views/DashboardView.vue";
 import NameModal from "./components/NameModal.vue";
 import EvaluationScreen from "./components/EvaluationScreen.vue";
-import InsightScreen from "./components/InsightScreen.vue";
 import ActionPlanScreen from "./components/ActionPlanScreen.vue";
 import SummaryScreen from "./components/SummaryScreen.vue";
 import AuthModal from "./components/AuthModal.vue";
@@ -121,9 +112,7 @@ const userName = ref("");
 const initialReflection = ref("");
 const initialMood = ref(null);
 const initialEvaluation = ref(null);
-const initialInsight = ref(null);
 const initialAction = ref(null);
-const insightContext = ref({});
 const summaryData = ref({});
 const nameModalRef = ref(null);
 const curtainVisible = ref(false);
@@ -184,7 +173,6 @@ function onAuthSuccess(user) {
         trigger: summaryData.value?.trigger ?? '',
         wentWell: summaryData.value?.wentWell ?? '',
         improve: summaryData.value?.needsWork ?? '',
-        insight: summaryData.value?.insight ?? '',
         action: summaryData.value?.action ?? '',
       }
       const existing = JSON.parse(localStorage.getItem('innerly_reflections') || '[]')
@@ -273,17 +261,6 @@ function onMoodDone(moodData) {
 
 function onEvaluationDone(evalData) {
   initialEvaluation.value = evalData;
-  insightContext.value = {
-    trigger: initialReflection.value,
-    moods: initialMood.value?.mood ? [initialMood.value.mood] : [],
-    wentWell: evalData.wentWell,
-    needsWork: evalData.needsWork,
-  };
-  stage.value = "insight";
-}
-
-function onInsightDone(insightData) {
-  initialInsight.value = insightData;
   stage.value = "actionplan";
 }
 
@@ -295,7 +272,6 @@ function onActionPlanDone(actionData) {
     moodEmoji: initialMood.value?.moodEmoji || "",
     wentWell: initialEvaluation.value?.wentWell || "",
     needsWork: initialEvaluation.value?.needsWork || "",
-    insight: initialInsight.value?.insight || "",
     action: actionData.action || "",
     committed: actionData.committed || false,
   };
@@ -308,10 +284,8 @@ function onLogout() {
   initialReflection.value = ""
   initialMood.value = null
   initialEvaluation.value = null
-  initialInsight.value = null
   initialAction.value = null
   summaryData.value = {}
-  insightContext.value = {}
   pendingReflection.value = null
   // Clear semua localStorage supaya reminder, watered, refleksi tidak bocor ke session berikutnya
   try {
@@ -384,10 +358,8 @@ function onStartNew() {
   initialReflection.value = "";
   initialMood.value = null;
   initialEvaluation.value = null;
-  initialInsight.value = null;
   initialAction.value = null;
   summaryData.value = {};
-  insightContext.value = {};
   stage.value = "moodcheck";
 }
 </script>

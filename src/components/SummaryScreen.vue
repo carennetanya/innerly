@@ -194,9 +194,6 @@
           <button class="sm-btn-new" @click="handleSelesai">
             🌱 {{ t.selesaiBtn }}
           </button>
-          <button class="sm-btn-dash" @click="$emit('done')">
-            {{ t.dashBtn }}
-          </button>
         </div>
       </div>
     </Transition>

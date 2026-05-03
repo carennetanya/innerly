@@ -23,12 +23,18 @@ export default {
     // Rename column if it was created without quotes (reserved word fix)
     await pool.query(`
       ALTER TABLE reflections RENAME COLUMN trigger TO "trigger"
-    `).catch(() => {}); // ignore if already correct or doesn't exist
+    `).catch(() => {});
+
+    // Add new Gibbs cycle columns if they don't exist yet
+    await pool.query(`ALTER TABLE reflections ADD COLUMN IF NOT EXISTS title TEXT`).catch(() => {});
+    await pool.query(`ALTER TABLE reflections ADD COLUMN IF NOT EXISTS feeling TEXT`).catch(() => {});
+    await pool.query(`ALTER TABLE reflections ADD COLUMN IF NOT EXISTS conclusion TEXT`).catch(() => {});
   },
 
   async getReflections(userId) {
     const result = await pool.query(
-      `SELECT id, user_id, date, mood, moods, "trigger", went_well, improve, insight, action, created_at 
+      `SELECT id, user_id, date, mood, moods, "trigger", went_well, improve, insight, action,
+              title, feeling, conclusion, created_at
        FROM reflections WHERE user_id = $1 ORDER BY date DESC`,
       [userId]
     );
@@ -42,18 +48,26 @@ export default {
   },
 
   async saveReflection(userId, data) {
-    const { date, mood, moods, trigger, wentWell, improve, insight, action } = data;
+    const { date, mood, moods, trigger, wentWell, improve, insight, action,
+            title, feeling, conclusion, description, analysis } = data;
 
-    // Pass moods as native JS array — pg driver handles JSONB casting automatically
+    // Support new field names (description→trigger, analysis→insight)
+    const triggerVal = description || trigger || null;
+    const insightVal = analysis || insight || null;
+
     const moodsValue = Array.isArray(moods) ? moods : (moods ? [moods] : null);
 
     const result = await pool.query(
-      `INSERT INTO reflections (user_id, date, mood, moods, "trigger", went_well, improve, insight, action)
-       VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7, $8, $9)
-       ON CONFLICT (user_id, date) 
-       DO UPDATE SET mood = $3, moods = $4::jsonb, "trigger" = $5, went_well = $6, improve = $7, insight = $8, action = $9
+      `INSERT INTO reflections
+         (user_id, date, mood, moods, "trigger", went_well, improve, insight, action, title, feeling, conclusion)
+       VALUES ($1,$2,$3,$4::jsonb,$5,$6,$7,$8,$9,$10,$11,$12)
+       ON CONFLICT (user_id, date) DO UPDATE SET
+         mood=$3, moods=$4::jsonb, "trigger"=$5, went_well=$6, improve=$7,
+         insight=$8, action=$9, title=$10, feeling=$11, conclusion=$12
        RETURNING *`,
-      [userId, date, mood || null, JSON.stringify(moodsValue), trigger || null, wentWell || null, improve || null, insight || null, action || null]
+      [userId, date, mood||null, JSON.stringify(moodsValue),
+       triggerVal, wentWell||null, improve||null, insightVal, action||null,
+       title||null, feeling||null, conclusion||null]
     );
 
     // Auto-update streak & last_reflection_date
