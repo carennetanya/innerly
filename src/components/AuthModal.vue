@@ -236,11 +236,17 @@ const handleSubmit = async () => {
   padding: 32px;
   width: 100%;
   max-width: 400px;
+  max-height: 90vh;
+  overflow-y: auto;
   position: relative;
   box-shadow:
     0 24px 72px rgba(80, 40, 180, 0.22),
     0 2px 10px rgba(80, 40, 180, 0.08);
   border: 1px solid rgba(160, 120, 250, 0.15);
+  scrollbar-width: none;
+}
+.auth-modal::-webkit-scrollbar {
+  display: none;
 }
 
 .auth-modal.is-dark {
@@ -447,5 +453,56 @@ const handleSubmit = async () => {
 }
 .modal-fade-leave-to {
   opacity: 0;
+}
+
+@media (max-width: 480px) {
+  .auth-overlay {
+    padding: 16px;
+  }
+
+  .auth-modal {
+    padding: 20px 18px;
+    border-radius: 20px;
+    max-height: 92vh;
+  }
+
+  .auth-tabs {
+    margin-bottom: 14px;
+  }
+
+  .auth-header {
+    margin-bottom: 14px;
+  }
+
+  .auth-header h2 {
+    font-size: 1.05rem;
+  }
+
+  .auth-header p {
+    font-size: 0.75rem;
+  }
+
+  .auth-form {
+    gap: 10px;
+  }
+
+  .form-group label {
+    font-size: 0.65rem;
+  }
+
+  .form-group input {
+    padding: 9px 12px;
+    font-size: 0.82rem;
+  }
+
+  .auth-submit {
+    padding: 11px;
+    font-size: 0.88rem;
+  }
+
+  .auth-footer {
+    margin-top: 10px;
+    font-size: 0.72rem;
+  }
 }
 </style>

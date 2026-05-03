@@ -70,6 +70,24 @@
               <div class="kb-profile-username">{{ topbarUsername || props.userName || 'User' }}</div>
               <div class="kb-profile-email">@{{ topbarUsername || props.userName || 'user' }}</div>
             </div>
+            <!-- Mobile only: dark mode + lang toggle di sebelah kanan nama -->
+            <div class="kb-profile-header-actions">
+              <button class="kb-profile-icon-btn" @click="$emit('toggleTheme')" :title="isDark ? 'Light mode' : 'Dark mode'">
+                <svg v-if="isDark" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="5"/>
+                  <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                  <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                </svg>
+                <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                </svg>
+              </button>
+              <button class="kb-profile-lang-btn" @click="$emit('toggleLang')">
+                {{ props.lang === 'id' ? 'ID' : 'EN' }}
+              </button>
+            </div>
           </div>
           <div class="kb-profile-divider"></div>
           <div class="kb-profile-section">
@@ -763,9 +781,53 @@ function onReflectionUpdated(updatedRef) {
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0; border: 2px solid var(--accent);
 }
-.kb-profile-info { display: flex; flex-direction: column; gap: 2px; }
+.kb-profile-info { display: flex; flex-direction: column; gap: 2px; flex: 1; }
 .kb-profile-username { font-size: 0.95rem; font-weight: 700; color: var(--text-primary); }
 .kb-profile-email { font-size: 0.78rem; color: var(--text-muted); }
+
+/* Tombol dark mode + lang di profile header (mobile only) */
+.kb-profile-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* Desktop: sembunyikan tombol di profile, biarkan di topbar */
+@media (min-width: 601px) {
+  .kb-profile-header-actions { display: none; }
+}
+.kb-profile-icon-btn {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border);
+  background: var(--bg-base);
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s;
+}
+.kb-profile-icon-btn:hover { background: var(--bg-card); }
+.kb-profile-lang-btn {
+  height: 30px; padding: 0 10px;
+  border-radius: 50px;
+  border: 1.5px solid var(--border);
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.72rem; font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.kb-profile-lang-btn:hover { background: var(--bg-card); }
+
+@media (max-width: 600px) {
+  /* Tampilkan tombol di profile dropdown */
+  .kb-profile-header-actions { display: flex; }
+  /* Sembunyikan tombol lang & theme di topbar */
+  .lang-btn, .topbar-right .icon-btn { display: none; }
+}
 .kb-profile-divider { height: 1px; background: var(--border); }
 .kb-profile-section { display: flex; flex-direction: column; gap: 4px; }
 .kb-profile-field-label { font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }

@@ -534,6 +534,7 @@ onMounted(async () => {
   overflow: hidden;
   opacity: 0;
   transition: opacity 0.9s ease;
+  padding-bottom: 80px;
 }
 .loading-screen.screen-visible {
   opacity: 1;
@@ -1224,7 +1225,7 @@ onMounted(async () => {
 }
 
 .brand {
-  margin-top: -110px;
+  margin-top: -140px;
   text-align: center;
   opacity: 0;
   transform: translateY(10px);
@@ -1513,8 +1514,8 @@ onMounted(async () => {
 
 /* THE CD DISC */
 .cd-disc {
-  width: 90px;
-  height: 90px;
+  width: 65px;
+  height: 65px;
   border-radius: 50%;
   cursor: pointer;
   position: relative;
@@ -1583,21 +1584,21 @@ onMounted(async () => {
   pointer-events: none;
 }
 .g1 {
-  width: 82px;
-  height: 82px;
+  width: 59px;
+  height: 59px;
 }
 .g2 {
-  width: 70px;
-  height: 70px;
+  width: 50px;
+  height: 50px;
 }
 .g3 {
-  width: 56px;
-  height: 56px;
+  width: 40px;
+  height: 40px;
   border-color: rgba(140, 120, 180, 0.18);
 }
 .g4 {
-  width: 44px;
-  height: 44px;
+  width: 32px;
+  height: 32px;
   border-color: rgba(140, 120, 180, 0.15);
 }
 
@@ -1632,7 +1633,7 @@ onMounted(async () => {
 .deco-text.title-text {
   position: absolute;
   font-family: "Playfair Display", Georgia, serif;
-  font-size: 9px;
+  font-size: 7px;
   font-weight: 700;
   font-style: italic;
   color: rgba(60, 40, 100, 0.75);
@@ -1694,8 +1695,8 @@ onMounted(async () => {
   justify-content: center;
 }
 .cd-hub {
-  width: 26px;
-  height: 26px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   background: radial-gradient(circle at 40% 35%, #f0ecff, #d0c8f0, #a090d0);
   border: 2px solid rgba(255, 255, 255, 0.9);
@@ -1722,7 +1723,7 @@ onMounted(async () => {
 /* Label below CD */
 .cd-label {
   font-family: "Outfit", sans-serif;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 400;
   letter-spacing: 0.06em;
   color: rgba(74, 63, 122, 0.65);
@@ -1731,6 +1732,21 @@ onMounted(async () => {
 }
 .cd-player.is-dark .cd-label {
   color: rgba(167, 139, 250, 0.7);
+}
+
+/* Desktop: CD lebih besar */
+@media (min-width: 768px) {
+  .cd-disc {
+    width: 90px;
+    height: 90px;
+  }
+  .g1 { width: 82px; height: 82px; }
+  .g2 { width: 70px; height: 70px; }
+  .g3 { width: 56px; height: 56px; }
+  .g4 { width: 44px; height: 44px; }
+  .cd-hub { width: 26px; height: 26px; }
+  .deco-text.title-text { font-size: 9px; }
+  .cd-label { font-size: 10px; }
 }
 
 /* ══ Skip Intro Button ══ */

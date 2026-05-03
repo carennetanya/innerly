@@ -468,6 +468,17 @@ function open() {
   }, 80);
 }
 
+// Buka kembali tanpa reset nama & refleksi (dipakai saat back dari moodcheck)
+function reopen() {
+  if (visible.value) return;
+  visible.value = true;
+  // Jangan reset name dan pages — pertahankan data yang sudah diisi
+  setTimeout(() => {
+    bookOpen.value = true;
+    setTimeout(() => nameInputRef.value?.focus(), 700);
+  }, 80);
+}
+
 function flipPage(to, afterFlip) {
   isFlipping.value = true;
   setTimeout(() => {
@@ -574,7 +585,7 @@ function close() {
   }, 500);
 }
 
-defineExpose({ open });
+defineExpose({ open, reopen });
 </script>
 
 <style scoped>
@@ -1234,5 +1245,85 @@ defineExpose({ open });
 .modal-fade-enter-from,
 .modal-fade-leave-to {
   opacity: 0;
+}
+
+/* ══ MOBILE: tampilan HP rapi ══ */
+@media (max-width: 600px) {
+  .nm-overlay {
+    padding: 16px;
+    align-items: center;
+  }
+
+  .nm-book {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    min-height: 0;
+    flex-direction: column;
+    transform: scale(0.95) translateY(10px);
+  }
+  .nm-book.open {
+    transform: scale(1) translateY(0);
+  }
+
+  /* Sembunyikan halaman kiri di mobile */
+  .nm-page-left {
+    display: none;
+  }
+
+  /* Spine jadi horizontal separator tipis */
+  .nm-spine {
+    display: none;
+  }
+
+  /* Halaman kanan jadi full card */
+  .nm-page-right {
+    border-radius: 12px;
+    border: 1px solid rgba(140, 108, 65, 0.22);
+    padding: 28px 22px 22px;
+    height: auto;
+    min-height: 380px;
+    display: flex;
+    flex-direction: column;
+  }
+  .nm-book.is-dark .nm-page-right {
+    border-color: rgba(167, 139, 250, 0.14);
+  }
+
+  /* Corner fold di kanan atas */
+  .nm-corner-fold {
+    border-radius: 0 12px 0 0;
+  }
+
+  /* Content flex column supaya tombol bisa push ke bawah */
+  .nm-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    padding-bottom: 10px;
+  }
+
+  /* Spacer sebelum tombol */
+  .nm-actions {
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: auto;
+    padding-top: 16px;
+  }
+
+  .nm-btn-primary {
+    min-width: 0;
+    flex: 1;
+  }
+
+  /* Input margin lebih rapat */
+  .nm-input-wrap {
+    margin-bottom: 14px;
+  }
+
+  .nm-sub {
+    margin-bottom: 10px;
+  }
 }
 </style>

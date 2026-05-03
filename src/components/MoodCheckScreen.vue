@@ -60,10 +60,17 @@
             @click="selectMood(m.label)"
           >
             <img :src="`/${m.key}.png`" :alt="m.label" class="mc-mood-emoji" />
-            <span class="mc-mood-label">{{ m.label }}</span>
+            <span class="mc-mood-label mc-mood-label-desktop">{{ m.label }}</span>
             <div class="mc-mood-ring"></div>
           </button>
         </div>
+
+        <!-- Label mood yang dipilih — muncul di HP saat dipencet -->
+        <Transition name="mc-selected-label">
+          <div v-if="selectedMood" class="mc-selected-badge">
+            <span class="mc-selected-badge-text" :style="{ color: selectedMoodObj?.color }">{{ selectedMood }}</span>
+          </div>
+        </Transition>
 
         <!-- Note input (shows after mood selected) -->
         <Transition name="mc-slide">
@@ -612,7 +619,10 @@ function getParticleStyle(i) {
   font-size: 0.64rem;
   font-weight: 600;
   color: rgba(74, 63, 122, 0.65);
-  white-space: nowrap;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.2;
+  word-break: break-word;
   transition: color 0.2s;
 }
 .mc-screen[data-dark="true"] .mc-mood-label {
@@ -762,5 +772,68 @@ function getParticleStyle(i) {
 .mc-slide-leave-to {
   opacity: 0;
   transform: translateY(-6px);
+}
+
+/* ══ MOBILE ══ */
+@media (max-width: 480px) {
+  .mc-mood-grid {
+    gap: 6px;
+  }
+
+  .mc-mood-btn {
+    padding: 10px 4px 10px;
+    gap: 4px;
+    border-radius: 12px;
+  }
+
+  .mc-mood-emoji {
+    width: 1.9rem;
+    height: 1.9rem;
+  }
+
+  /* Sembunyikan label di dalam kartu di HP */
+  .mc-mood-label-desktop {
+    display: none;
+  }
+}
+
+/* Badge nama mood yang dipilih (muncul di HP) */
+.mc-selected-badge {
+  display: none;
+  justify-content: center;
+  align-items: center;
+  margin-top: 4px;
+}
+.mc-selected-badge-text {
+  font-family: "Outfit", sans-serif;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 4px 18px;
+  border-radius: 50px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1.5px solid currentColor;
+  opacity: 0.85;
+}
+
+@media (max-width: 480px) {
+  .mc-selected-badge {
+    display: flex;
+  }
+}
+
+/* Transisi badge */
+.mc-selected-label-enter-active {
+  transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+.mc-selected-label-leave-active {
+  transition: opacity 0.15s ease;
+}
+.mc-selected-label-enter-from {
+  opacity: 0;
+  transform: translateY(-6px) scale(0.92);
+}
+.mc-selected-label-leave-to {
+  opacity: 0;
 }
 </style>

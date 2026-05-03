@@ -30,7 +30,7 @@
         :user-name="userName"
         :lang="lang"
         @done="onMoodDone"
-        @back="stage = 'dashboard'"
+        @back="onMoodBack"
       />
       <EvaluationScreen
         v-else-if="stage === 'evaluation'"
@@ -106,6 +106,7 @@ import { authService } from "./services/auth.js";
 import { reflectionService } from "./services/reflection.js";
 
 const stage = ref("loading");
+const prevStage = ref("greeting"); // track dari mana masuk ke moodcheck
 const globalAudio = ref(null);
 const isDark = ref(false);
 const userName = ref("");
@@ -251,7 +252,18 @@ function onNameDone(name, reflection) {
   initialReflection.value = reflection;
   // Save user profile so next visit skips onboarding
   saveUser(name, lang.value);
+  prevStage.value = "greeting";
   stage.value = "moodcheck";
+}
+
+function onMoodBack() {
+  if (prevStage.value === 'dashboard') {
+    stage.value = 'dashboard';
+  } else {
+    // Dari onboarding — kembali ke NameModal (skip greeting ulang)
+    stage.value = 'greeting';
+    setTimeout(() => nameModalRef.value?.reopen(), 50);
+  }
 }
 
 function onMoodDone(moodData) {
@@ -360,6 +372,7 @@ function onStartNew() {
   initialEvaluation.value = null;
   initialAction.value = null;
   summaryData.value = {};
+  prevStage.value = "dashboard";
   stage.value = "moodcheck";
 }
 </script>
