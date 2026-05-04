@@ -158,16 +158,29 @@
         <img alt="scope" src="/scope.png" class="kb-fab-scope" />
         <span class="kb-fab-plus">+</span>
       </button>
-      <div v-if="!props.justRegistered && (!props.hasReflectionToday || (props.hasReflectionToday && !hasWateredLocally))" class="kb-fab-chat-bubble">
-        <span class="kb-fab-chat-text">
-          {{ lang === 'id'
-            ? (!props.hasReflectionToday ? 'Kamu belum isi refleksi hari ini loh!' : 'Jangan lupa siram tanamanmu hari ini!')
-            : (!props.hasReflectionToday ? 'You haven\'t filled reflection today yet!' : 'Don\'t forget to water your plant today!')
-          }}
-        </span>
-      </div>
+      <Transition name="collection-bubble-pop">
+        <div v-if="showCollectionBubble && collectedFlowers.length > 0" class="kb-fab-chat-bubble kb-collection-bubble" key="collection" @click.stop="openCollectionPopup">
+          <span class="kb-fab-chat-text">🌸 {{ lang === 'id' ? 'Koleksi bungamu!' : 'Your flower collection!' }}</span>
+        </div>
+        <div v-else-if="!props.justRegistered && (!props.hasReflectionToday || (props.hasReflectionToday && !hasWateredLocally))" class="kb-fab-chat-bubble" key="hint">
+          <span class="kb-fab-chat-text">
+            {{ lang === 'id'
+              ? (!props.hasReflectionToday ? 'Kamu belum isi refleksi hari ini loh!' : 'Jangan lupa siram tanamanmu hari ini!')
+              : (!props.hasReflectionToday ? 'You haven\'t filled reflection today yet!' : 'Don\'t forget to water your plant today!')
+            }}
+          </span>
+        </div>
+      </Transition>
       <span class="kb-fab-label">{{ lang === 'id' ? 'Tambah Refleksi' : 'Add Reflection' }}</span>
     </div>
+
+    <!-- Flower Collection Button (floating, bottom left) -->
+    <Transition name="collection-btn-pop">
+      <button v-if="collectedFlowers.length > 0" class="kb-collection-fab" @click="openCollectionPopup" :title="lang === 'id' ? 'Koleksi Bunga' : 'Flower Collection'">
+        <img :src="collectedFlowers[collectedFlowers.length - 1].img" class="kb-collection-fab-img" alt="flower" />
+        <span class="kb-collection-fab-count">{{ collectedFlowers.length }}</span>
+      </button>
+    </Transition>
 
     <!-- Growth Garden Panel -->
     <Transition name="growth-panel">
@@ -510,6 +523,53 @@
           <button class="kb-reflection-warning-btn" @click="closeReflectionWarning">
             {{ lang === 'id' ? 'OK, Mengerti' : "Got It" }}
           </button>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- Flower Collection Popup -->
+    <Transition name="kb-popup">
+      <div class="kb-popup-overlay" v-if="showCollectionPopup" @click.self="closeCollectionPopup">
+        <div class="kb-collection-popup">
+          <div class="kb-collection-popup-header">
+            <span class="kb-collection-popup-title">🌸 {{ lang === 'id' ? 'Koleksi Bungamu' : 'Your Flower Collection' }}</span>
+            <button class="kb-popup-close" @click="closeCollectionPopup">✕</button>
+          </div>
+          <p class="kb-collection-popup-subtitle">
+            {{ lang === 'id'
+              ? `${collectedFlowers.length} dari ${flowerOptions.length} bunga berhasil kamu tanam!`
+              : `${collectedFlowers.length} of ${flowerOptions.length} flowers collected!`
+            }}
+          </p>
+          <!-- Progress bar -->
+          <div class="kb-collection-progress-wrap">
+            <div class="kb-collection-progress-track">
+              <div class="kb-collection-progress-fill" :style="{ width: (collectedFlowers.length / flowerOptions.length * 100) + '%' }"></div>
+            </div>
+            <span class="kb-collection-progress-label">{{ Math.round(collectedFlowers.length / flowerOptions.length * 100) }}%</span>
+          </div>
+          <!-- Collected flowers grid -->
+          <div class="kb-collection-grid">
+            <div
+              v-for="f in flowerOptions"
+              :key="f.key"
+              class="kb-collection-slot"
+              :class="{ 'kb-collection-slot-owned': isFlowerCollected(f.key), 'kb-collection-slot-locked': !isFlowerCollected(f.key) }"
+            >
+              <div class="kb-collection-slot-inner">
+                <img v-if="isFlowerCollected(f.key)" :src="f.img" :alt="f.label" class="kb-collection-flower-img" />
+                <span v-else class="kb-collection-locked-icon">🔒</span>
+              </div>
+              <span class="kb-collection-flower-name">{{ lang === 'id' ? f.labelId : f.label }}</span>
+              <span v-if="isFlowerCollected(f.key)" class="kb-collection-owned-badge">✓</span>
+            </div>
+          </div>
+          <p class="kb-collection-hint">
+            {{ lang === 'id'
+              ? 'Setiap 3 hari streak, kamu bisa menanam 1 bunga baru!'
+              : 'Every 3-day streak, you can grow a new flower!'
+            }}
+          </p>
         </div>
       </div>
     </Transition>
@@ -888,6 +948,46 @@ const showFlowerPicker = ref(false)
 const tempFlower = ref(null)
 const chosenFlower = ref(null) // Will be loaded from DB in onMounted; fallback to localStorage
 
+// ── Flower Collection ──
+const collectedFlowers = ref([]) // Array of { key, img, label, labelId, collectedAt }
+const showCollectionPopup = ref(false)
+const showCollectionBubble = ref(false)
+let collectionBubbleTimer = null
+
+function loadCollectedFlowers() {
+  try {
+    const stored = localStorage.getItem('innerly_collected_flowers')
+    if (stored) collectedFlowers.value = JSON.parse(stored)
+  } catch {}
+}
+
+function saveCollectedFlowers() {
+  try {
+    localStorage.setItem('innerly_collected_flowers', JSON.stringify(collectedFlowers.value))
+  } catch {}
+}
+
+function isFlowerCollected(key) {
+  return collectedFlowers.value.some(f => f.key === key)
+}
+
+function openCollectionPopup() {
+  showCollectionBubble.value = false
+  showCollectionPopup.value = true
+}
+
+function closeCollectionPopup() {
+  showCollectionPopup.value = false
+}
+
+function triggerCollectionBubble() {
+  showCollectionBubble.value = true
+  if (collectionBubbleTimer) clearTimeout(collectionBubbleTimer)
+  collectionBubbleTimer = setTimeout(() => {
+    showCollectionBubble.value = false
+  }, 5000)
+}
+
 // ── Already reflected today warning ──
 const showReflectionAlreadyDoneWarning = ref(false)
 
@@ -906,17 +1006,41 @@ const flowerOptions = [
 
 function confirmFlower() {
   if (!tempFlower.value) return
-  chosenFlower.value = tempFlower.value
-  localStorage.setItem('innerly_chosen_flower', tempFlower.value)
+  const pickedImg = tempFlower.value
+  chosenFlower.value = pickedImg
+  localStorage.setItem('innerly_chosen_flower', pickedImg)
   showFlowerPicker.value = false
+
+  // Add to collection if not already there
+  const pickedOption = flowerOptions.find(f => f.img === pickedImg)
+  if (pickedOption && !isFlowerCollected(pickedOption.key)) {
+    collectedFlowers.value.push({
+      key: pickedOption.key,
+      img: pickedOption.img,
+      label: pickedOption.label,
+      labelId: pickedOption.labelId,
+      collectedAt: new Date().toISOString(),
+    })
+    saveCollectedFlowers()
+    // Show collection bubble after a short delay (let watering animation finish)
+    setTimeout(() => triggerCollectionBubble(), 2200)
+  }
+
+  // Reset plant to dirt after this cycle — next watering starts fresh
+  // We use a small delay so the flower is visible briefly
+  setTimeout(() => {
+    chosenFlower.value = null
+    localStorage.removeItem('innerly_chosen_flower')
+  }, 3500)
+
   // Save chosen flower to DB so it persists across logout/login
   const userId = props.userId
   if (userId) {
-    console.log('[Innerly] Saving chosen flower to DB:', tempFlower.value, 'for userId:', userId);
+    console.log('[Innerly] Saving chosen flower to DB:', pickedImg, 'for userId:', userId);
     fetch(`/api/streak/${userId}/flower`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ flower: tempFlower.value })
+      body: JSON.stringify({ flower: pickedImg })
     })
       .then(res => res.json())
       .then(data => console.log('[Innerly] Flower saved to DB:', data))
@@ -965,6 +1089,9 @@ onMounted(async () => {
   // Load from localStorage first (instant fallback while waiting for DB)
   const localFlower = localStorage.getItem('innerly_chosen_flower');
   if (localFlower) chosenFlower.value = localFlower;
+
+  // Load collected flowers from localStorage
+  loadCollectedFlowers();
 
   // Load from DB (props.userId mungkin sudah tersedia saat mount)
   await loadUserDataFromDB(props.userId);
@@ -1149,9 +1276,11 @@ const cycleProgress = computed(() => {
 // Day 2: seed → (siram) → leaf
 // Day 3+: leaf → (siram) → flower pilihan
 const plantStage = computed(() => {
-  if (props.streakDays <= 1) return hasWateredLocally.value ? 'seed' : 'dirt'
-  if (props.streakDays === 2) return hasWateredLocally.value ? 'sprout' : 'seed'
-  if (props.streakDays >= 3) return hasWateredLocally.value ? 'flower' : 'sprout'
+  // Use cycle position (1, 2, or 3) for repeating growth pattern
+  const dayInCycle = streakInCycle.value  // 1, 2, or 3
+  if (dayInCycle <= 1) return hasWateredLocally.value ? 'seed' : 'dirt'
+  if (dayInCycle === 2) return hasWateredLocally.value ? 'sprout' : 'seed'
+  if (dayInCycle >= 3) return hasWateredLocally.value ? 'flower' : 'sprout'
   return 'dirt'
 })
 
@@ -2785,5 +2914,221 @@ function closeReflectionWarning() {
 
 .kb-reflection-warning-btn:active {
   transform: translateY(0);
+}
+
+/* ── Flower Collection FAB (bottom left) ── */
+.kb-collection-fab {
+  position: fixed;
+  bottom: 88px;
+  left: 24px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f59e0b 0%, #fcd34d 100%);
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  transition: transform 0.18s, box-shadow 0.18s;
+  animation: collection-glow 2.5s ease-in-out infinite;
+}
+.kb-collection-fab:hover {
+  transform: scale(1.12);
+  box-shadow: 0 10px 28px rgba(245, 158, 11, 0.65);
+}
+@keyframes collection-glow {
+  0%, 100% { box-shadow: 0 6px 20px rgba(245,158,11,0.5); }
+  50% { box-shadow: 0 6px 28px rgba(245,158,11,0.8), 0 0 16px rgba(245,158,11,0.3); }
+}
+.kb-collection-fab-img {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15));
+}
+.kb-collection-fab-count {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: #ef4444;
+  color: white;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid white;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+/* Collection bubble */
+.kb-collection-bubble {
+  background: linear-gradient(135deg, #fef3c7, #fde68a) !important;
+  color: #78350f !important;
+  cursor: pointer;
+  border: 1.5px solid #f59e0b;
+}
+.kb-collection-bubble:hover {
+  background: linear-gradient(135deg, #fde68a, #fcd34d) !important;
+}
+
+/* Collection button pop transition */
+.collection-btn-pop-enter-active, .collection-btn-pop-leave-active {
+  transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+.collection-btn-pop-enter-from, .collection-btn-pop-leave-to {
+  opacity: 0;
+  transform: scale(0.5);
+}
+
+/* Collection bubble pop transition */
+.collection-bubble-pop-enter-active, .collection-bubble-pop-leave-active {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+.collection-bubble-pop-enter-from, .collection-bubble-pop-leave-to {
+  opacity: 0;
+  transform: translateY(-50%) translateX(8px);
+}
+
+/* ── Flower Collection Popup ── */
+.kb-collection-popup {
+  background: var(--bg-card);
+  border-radius: 24px;
+  padding: 24px;
+  max-width: 420px;
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+.kb-collection-popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.kb-collection-popup-title {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+.kb-collection-popup-subtitle {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  margin: -6px 0 0;
+}
+.kb-collection-progress-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.kb-collection-progress-track {
+  flex: 1;
+  height: 10px;
+  background: var(--bg-base);
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1.5px solid var(--border);
+}
+.kb-collection-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #f59e0b, #fcd34d);
+  border-radius: 10px;
+  transition: width 0.6s cubic-bezier(0.34, 1.2, 0.64, 1);
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.4);
+}
+.kb-collection-progress-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  min-width: 32px;
+  text-align: right;
+}
+.kb-collection-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+}
+.kb-collection-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  position: relative;
+}
+.kb-collection-slot-inner {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s;
+}
+.kb-collection-slot-owned .kb-collection-slot-inner {
+  background: linear-gradient(135deg, rgba(245,158,11,0.12), rgba(252,211,77,0.2));
+  border: 2px solid rgba(245,158,11,0.4);
+  box-shadow: 0 4px 14px rgba(245,158,11,0.2);
+  animation: flower-appear 0.5s cubic-bezier(0.34,1.4,0.64,1) both;
+}
+.kb-collection-slot-locked .kb-collection-slot-inner {
+  background: var(--bg-base);
+  border: 2px dashed var(--border);
+  opacity: 0.5;
+}
+.kb-collection-slot-owned:hover .kb-collection-slot-inner {
+  transform: translateY(-4px) scale(1.08);
+}
+.kb-collection-flower-img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15));
+}
+.kb-collection-locked-icon {
+  font-size: 1.2rem;
+  opacity: 0.4;
+}
+.kb-collection-flower-name {
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-align: center;
+  line-height: 1.2;
+}
+.kb-collection-owned-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: #4caf50;
+  color: white;
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  font-size: 0.55rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid white;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+}
+.kb-collection-hint {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  text-align: center;
+  font-style: italic;
+  line-height: 1.5;
+  background: var(--bg-base);
+  border-radius: 10px;
+  padding: 8px 12px;
 }
 </style>
