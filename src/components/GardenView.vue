@@ -1238,8 +1238,9 @@ function triggerWatering() {
       console.warn('[Innerly] triggerWatering: userId not found (user not logged in), skipping DB save');
     }
     emit('watered')
-    // Day 3 (streakDays >= 2) dan belum pernah pilih bunga → tampilkan flower picker
-    if (props.streakDays >= 2 && !chosenFlower.value) {
+    // Tampilkan flower picker HANYA saat plantStage === 'flower' (Day 3 dalam siklus)
+    // plantStage computed sudah otomatis reaktif terhadap hasWateredLocally yang baru di-set true
+    if (plantStage.value === 'flower' && !chosenFlower.value) {
       setTimeout(() => { showFlowerPicker.value = true }, 400)
     }
   }, 1800)
