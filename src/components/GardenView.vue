@@ -954,16 +954,23 @@ const showCollectionPopup = ref(false)
 const showCollectionBubble = ref(false)
 let collectionBubbleTimer = null
 
+function getCollectionKey() {
+  // Scope per user so different accounts don't share collection
+  const userId = props.userId
+  return userId ? `innerly_collected_flowers_${userId}` : 'innerly_collected_flowers_guest'
+}
+
 function loadCollectedFlowers() {
   try {
-    const stored = localStorage.getItem('innerly_collected_flowers')
+    collectedFlowers.value = []
+    const stored = localStorage.getItem(getCollectionKey())
     if (stored) collectedFlowers.value = JSON.parse(stored)
   } catch {}
 }
 
 function saveCollectedFlowers() {
   try {
-    localStorage.setItem('innerly_collected_flowers', JSON.stringify(collectedFlowers.value))
+    localStorage.setItem(getCollectionKey(), JSON.stringify(collectedFlowers.value))
   } catch {}
 }
 
@@ -1102,6 +1109,8 @@ onMounted(async () => {
 watch(() => props.userId, async (newId, oldId) => {
   if (newId && newId !== oldId) {
     console.log('[Innerly] userId changed, reloading from DB:', newId);
+    // Reload collection for the new user (different accounts must not share data)
+    loadCollectedFlowers();
     await loadUserDataFromDB(newId);
   }
 }, { immediate: false });
