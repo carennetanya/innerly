@@ -10,49 +10,6 @@
           <span class="date-chip">{{ todayStr }}</span>
         </div>
         <div class="topbar-right">
-          <button
-            class="lang-btn"
-            @click="$emit('toggleLang')"
-            :title="props.lang === 'id' ? 'Switch to English' : 'Ganti ke Indonesia'"
-          >
-            {{ props.lang === 'id' ? 'Indonesia' : 'English' }}
-          </button>
-          <button
-            class="icon-btn"
-            @click="$emit('toggleTheme')"
-            :title="isDark ? 'Light mode' : 'Dark mode'"
-          >
-            <svg
-              v-if="isDark"
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <circle cx="12" cy="12" r="5" />
-              <line x1="12" y1="1" x2="12" y2="3" />
-              <line x1="12" y1="21" x2="12" y2="23" />
-              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-              <line x1="1" y1="12" x2="3" y2="12" />
-              <line x1="21" y1="12" x2="23" y2="12" />
-              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-            </svg>
-            <svg
-              v-else
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-            </svg>
-          </button>
           <div class="avatar" @click="topbarProfileOpen = !topbarProfileOpen" ref="topbarAvatarRef" style="cursor:pointer;">
             {{ props.userName ? props.userName[0].toUpperCase() : "A" }}
           </div>
@@ -1158,13 +1115,13 @@ function onReflectionUpdated(updatedRef) {
   padding: 5px 10px;
 }
 .bottom-nav-label {
-  font-size: 0.6rem;
+  font-size: 0.55rem;
   line-height: 1;
   text-align: center;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 70px;
+  max-width: 68px;
 }
 .bottom-nav-badge {
   position: absolute;
@@ -1180,7 +1137,7 @@ function onReflectionUpdated(updatedRef) {
 
 /* Adjust main content to not be hidden behind bottom nav */
 .main {
-  padding-bottom: 72px;
+  padding-bottom: calc(64px + env(safe-area-inset-bottom));
 }
 
 /* ── Already reflected toast ── */

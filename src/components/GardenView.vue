@@ -12,28 +12,13 @@
         <span class="kb-hi-name">Hi, {{ props.userName || 'there' }} 👋</span>
       </div>
 
-      <!-- Center: Brand -->
+      <!-- Center: Brand (logo only, no text) -->
       <div class="kb-brand">
         <img src="/logo.png" alt="Innerly" class="kb-logo" />
-        <span class="kb-brand-name">Innerly</span>
       </div>
 
-      <!-- Right: Controls + Streak -->
+      <!-- Right: Streak only (lang & dark mode moved to profile dropdown) -->
       <div class="kb-header-right">
-        <button class="kb-header-lang-btn" @click="$emit('toggle-lang')" :title="lang === 'id' ? 'Switch to English' : 'Ganti ke Indonesia'">
-          {{ lang === 'id' ? 'Indonesia' : 'English' }}
-        </button>
-        <button class="kb-header-icon-btn" @click="$emit('toggle-theme')" :title="isDark ? 'Light mode' : 'Dark mode'">
-          <svg v-if="isDark" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
-            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-            <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
-            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-          </svg>
-          <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-          </svg>
-        </button>
         <div class="kb-streak-container">
           <div class="kb-streak-main">
             <img :src="headerStreakImg" alt="streak plant" class="kb-streak-plant-img" />
@@ -58,6 +43,24 @@
           <div class="kb-profile-info">
             <div class="kb-profile-username">{{ userUsername || props.userName || 'User' }}</div>
             <div class="kb-profile-email">@{{ userUsername || props.userName || 'user' }}</div>
+          </div>
+          <!-- Lang & Dark Mode controls -->
+          <div class="kb-profile-header-actions">
+            <button class="kb-profile-icon-btn" @click="$emit('toggle-theme')" :title="isDark ? 'Light mode' : 'Dark mode'">
+              <svg v-if="isDark" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="5"/>
+                <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+              </svg>
+              <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+              </svg>
+            </button>
+            <button class="kb-profile-lang-btn" @click="$emit('toggle-lang')">
+              {{ lang === 'id' ? 'ID' : 'EN' }}
+            </button>
           </div>
         </div>
         <div class="kb-profile-divider"></div>
@@ -123,7 +126,7 @@
         <!-- Flowers for this day -->
         <div class="kb-flowers kb-flowers-large" v-if="getDayReflections(day).length > 0">
           <!-- Tanah sebagai background, ukuran besar -->
-          <img src="/dirt.png" alt="dirt" class="kb-dirt-img kb-dirt-img-large" style="width:90px;height:55px;object-fit:contain;" />
+          <img src="/dirt.png" alt="dirt" class="kb-dirt-img kb-dirt-img-large" />
           <transition-group name="fade-flower" tag="div" class="kb-flower-group">
             <template v-for="(flower, idx) in getDayFlowers(day).slice(0, 3)" :key="'flower-' + idx">
               <div
@@ -136,7 +139,6 @@
                   :src="flower.img"
                   :alt="flower.label"
                   class="kb-mood-img kb-mood-img-large fade-flower-item"
-                  style="width:72px;height:72px;"
                 />
                 <span v-else class="kb-flower-emoji fade-flower-item">{{ flower.emoji }}</span>
               </div>
@@ -147,7 +149,7 @@
 
         <!-- Empty plot (today, no reflection yet) -->
           <div class="kb-plot" v-else-if="!isFuture(day)">
-            <img src="/dirt.png" alt="dirt" class="kb-dirt-img kb-dirt-img-large" style="width:90px;height:55px;object-fit:contain;" />
+            <img src="/dirt.png" alt="dirt" class="kb-dirt-img kb-dirt-img-large" />
           </div>
       </div>
     </div>
@@ -689,7 +691,7 @@ const viewMonth = ref(today.getMonth()) // 0-indexed
 
 const dayLabels = computed(() =>
   props.lang === 'id'
-    ? ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu']
+    ? ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab']
     : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 )
 
@@ -1553,6 +1555,40 @@ function closeReflectionWarning() {
   align-items: center;
   gap: 12px;
 }
+.kb-profile-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.kb-profile-icon-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.kb-profile-icon-btn:hover { background: var(--bg-card); }
+.kb-profile-lang-btn {
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.kb-profile-lang-btn:hover { background: var(--bg-card); }
 .kb-profile-avatar-lg {
   width: 48px;
   height: 48px;
@@ -1708,12 +1744,16 @@ function closeReflectionWarning() {
 
 /* Dirt image for empty plot */
 .kb-dirt-img {
-  width: 90px;
-  height: 90px;
+  width: clamp(40px, 10vw, 70px);
+  height: clamp(25px, 6vw, 45px);
   object-fit: contain;
   opacity: 0.55;
   filter: drop-shadow(0 1px 2px rgba(0,0,0,0.15));
   transition: opacity 0.15s;
+}
+.kb-dirt-img-large {
+  width: clamp(40px, 10vw, 70px);
+  height: clamp(25px, 6vw, 45px);
 }
 .kb-cell:hover .kb-dirt-img {
   opacity: 0.75;
@@ -1724,7 +1764,7 @@ function closeReflectionWarning() {
   flex: 1;
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  grid-auto-rows: minmax(115px, auto);
+  grid-auto-rows: minmax(80px, auto);
   gap: 0;
   border-left: 1px solid var(--border);
   border-top: 1px solid var(--border);
@@ -1736,24 +1776,26 @@ function closeReflectionWarning() {
   border-right: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
   text-align: center;
-  font-size: 0.75rem;
+  font-size: 0.6rem;
   font-weight: 700;
   color: var(--text-secondary);
-  padding: 8px 4px;
-  letter-spacing: 0.04em;
+  padding: 6px 2px;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .kb-cell {
   border-right: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
   background: var(--bg-card);
-  min-height: 90px;
-  padding: 6px 8px;
+  min-height: 70px;
+  padding: 4px 2px;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
+  align-items: center;
+  gap: 2px;
   cursor: pointer;
   transition: background 0.15s;
   position: relative;
@@ -1783,10 +1825,11 @@ function closeReflectionWarning() {
 }
 
 .kb-day-num {
-  font-size: 0.8rem;
+  font-size: 0.7rem;
   font-weight: 600;
   color: var(--text-secondary);
-  align-self: flex-start;
+  align-self: center;
+  line-height: 1;
 }
 .kb-cell-today .kb-day-num {
   color: var(--accent);
@@ -1803,20 +1846,22 @@ function closeReflectionWarning() {
 .kb-flowers {
   display: flex;
   flex-wrap: wrap;
-  gap: 3px;
+  gap: 0;
   flex: 1;
   align-items: center;
   justify-content: center;
   width: 100%;
   overflow: hidden;
+  position: relative;
 }
 .kb-flower-group {
   display: flex;
   flex-wrap: wrap;
-  gap: 2px;
-  max-width: 220px;
+  gap: 0;
+  max-width: 100%;
   overflow: hidden;
   align-items: center;
+  justify-content: center;
 }
 .kb-flower-more {
   font-size: 1.1rem;
@@ -1842,12 +1887,16 @@ function closeReflectionWarning() {
 
 /* Mood images */
 .kb-mood-img {
-  width: 72px;
-  height: 72px;
+  width: 44px;
+  height: 44px;
   object-fit: contain;
   filter: drop-shadow(0 2px 6px rgba(0,0,0,0.15));
   transition: transform 0.2s ease;
   animation: flower-appear 0.4s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+.kb-mood-img-large {
+  width: clamp(30px, 8vw, 56px);
+  height: clamp(30px, 8vw, 56px);
 }
 @keyframes flower-appear {
   from { transform: scale(0) translateY(8px); opacity: 0; }
