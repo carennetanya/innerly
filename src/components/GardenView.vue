@@ -1061,12 +1061,43 @@ function loadCollectedFlowers() {
     const stored = localStorage.getItem(getCollectionKey())
     if (stored) collectedFlowers.value = JSON.parse(stored)
   } catch {}
+
+  // Also load from DB to ensure persistence across devices
+  const userId = props.userId
+  if (userId) {
+    fetch(`/api/streak/${userId}/collection`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.flowers && data.flowers.length > 0) {
+          // Merge DB flowers with local, DB takes precedence if more
+          if (data.flowers.length >= collectedFlowers.value.length) {
+            collectedFlowers.value = data.flowers
+            saveCollectedFlowers()
+          }
+        } else if (collectedFlowers.value.length > 0) {
+          // Sync local to DB if DB is empty but local has data
+          syncCollectionToDb()
+        }
+      })
+      .catch(() => {})
+  }
 }
 
 function saveCollectedFlowers() {
   try {
     localStorage.setItem(getCollectionKey(), JSON.stringify(collectedFlowers.value))
   } catch {}
+  syncCollectionToDb()
+}
+
+function syncCollectionToDb() {
+  const userId = props.userId
+  if (!userId) return
+  fetch(`/api/streak/${userId}/collection`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ flowers: collectedFlowers.value })
+  }).catch(() => {})
 }
 
 function isFlowerCollected(key) {
@@ -1333,9 +1364,14 @@ function triggerWatering() {
       console.warn('[Innerly] triggerWatering: userId not found (user not logged in), skipping DB save');
     }
     emit('watered')
-    // Tampilkan flower picker HANYA saat plantStage === 'flower' (Day 3 dalam siklus)
-    // plantStage computed sudah otomatis reaktif terhadap hasWateredLocally yang baru di-set true
-    if (plantStage.value === 'flower' && !chosenFlower.value) {
+    // Tampilkan flower picker saat Day 3 dalam siklus.
+    // Karena props.streakDays belum di-update parent saat ini,
+    // kita hitung manual: streakDays + 1 (setelah siram hari ini)
+    const newStreak = (props.streakDays || 0) + 1
+    const newMod = newStreak % 3
+    const newCycleDay = newMod === 0 ? 3 : newMod
+    const nextStage = newCycleDay >= 3 ? 'flower' : (newCycleDay === 2 ? 'sprout' : 'seed')
+    if (nextStage === 'flower' && !chosenFlower.value) {
       setTimeout(() => { showFlowerPicker.value = true }, 400)
     }
   }, 1800)
@@ -1381,9 +1417,18 @@ const cycleProgress = computed(() => {
 // Day 2: seed → (siram) → leaf
 // Day 3+: leaf → (siram) → flower pilihan
 const plantStage = computed(() => {
-  // Use cycle position (1, 2, or 3) for repeating growth pattern
-  const dayInCycle = streakInCycle.value  // 1, 2, or 3
-  if (dayInCycle <= 1) return hasWateredLocally.value ? 'seed' : 'dirt'
+  // Use actual streak days (not reduced by 1) to determine the correct stage
+  // streakDays reflects how many days have been completed (watered)
+  // On a new day before watering, streakDays = days already done
+  const completedDays = props.streakDays || 0
+  const mod = completedDays % 3
+  const dayInCycle = mod === 0 && completedDays > 0 ? 3 : mod  // 0=no streak, 1, 2, or 3
+
+  // Day 1: before water → dirt, after water → seed
+  // Day 2: before water → seed (from yesterday), after water → sprout/leaf
+  // Day 3: before water → sprout (from yesterday), after water → flower
+  if (dayInCycle === 0) return 'dirt'
+  if (dayInCycle === 1) return hasWateredLocally.value ? 'seed' : 'dirt'
   if (dayInCycle === 2) return hasWateredLocally.value ? 'sprout' : 'seed'
   if (dayInCycle >= 3) return hasWateredLocally.value ? 'flower' : 'sprout'
   return 'dirt'

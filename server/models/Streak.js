@@ -10,21 +10,25 @@ export default {
         last_reflection_date DATE,
         last_watered_date DATE,
         chosen_flower TEXT,
+        collected_flowers JSONB DEFAULT '[]',
         created_at TIMESTAMP DEFAULT NOW()
       )
     `);
-    // Add chosen_flower column if upgrading from old schema
+    // Add columns if upgrading from old schema
     await pool.query(`
       ALTER TABLE user_streaks ADD COLUMN IF NOT EXISTS chosen_flower TEXT
+    `).catch(() => {});
+    await pool.query(`
+      ALTER TABLE user_streaks ADD COLUMN IF NOT EXISTS collected_flowers JSONB DEFAULT '[]'
     `).catch(() => {});
   },
 
   async getStreak(userId) {
     const result = await pool.query(
-      `SELECT streak, last_reflection_date, last_watered_date, chosen_flower FROM user_streaks WHERE user_id = $1`,
+      `SELECT streak, last_reflection_date, last_watered_date, chosen_flower, collected_flowers FROM user_streaks WHERE user_id = $1`,
       [userId]
     );
-    return result.rows[0] || { streak: 0, last_reflection_date: null, last_watered_date: null, chosen_flower: null };
+    return result.rows[0] || { streak: 0, last_reflection_date: null, last_watered_date: null, chosen_flower: null, collected_flowers: [] };
   },
 
   async updateStreak(userId, streak, lastReflectionDate) {
@@ -54,6 +58,24 @@ export default {
        ON CONFLICT (user_id)
        DO UPDATE SET chosen_flower = $2`,
       [userId, flowerPath]
+    );
+  },
+
+  async getCollectedFlowers(userId) {
+    const result = await pool.query(
+      `SELECT collected_flowers FROM user_streaks WHERE user_id = $1`,
+      [userId]
+    );
+    return result.rows[0]?.collected_flowers || [];
+  },
+
+  async saveCollectedFlowers(userId, flowers) {
+    await pool.query(
+      `INSERT INTO user_streaks (user_id, collected_flowers)
+       VALUES ($1, $2::jsonb)
+       ON CONFLICT (user_id)
+       DO UPDATE SET collected_flowers = $2::jsonb`,
+      [userId, JSON.stringify(flowers)]
     );
   },
 };

@@ -77,4 +77,30 @@ router.post("/:userId/flower", async (req, res) => {
   }
 });
 
+// GET /api/streak/:userId/collection
+router.get("/:userId/collection", async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const flowers = await Streak.getCollectedFlowers(userId);
+    res.json({ flowers });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/streak/:userId/collection
+// { flowers: [...] }
+router.post("/:userId/collection", async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { flowers } = req.body;
+    if (!Array.isArray(flowers)) return res.status(400).json({ error: "flowers must be an array" });
+
+    await Streak.saveCollectedFlowers(userId, flowers);
+    res.json({ ok: true, count: flowers.length });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;

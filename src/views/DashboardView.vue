@@ -94,7 +94,7 @@
           @logout="$emit('logout')"
           @toggle-theme="$emit('toggleTheme')"
           @toggle-lang="$emit('toggleLang')"
-          @watered="alreadyWateredToday = true"
+          @watered="alreadyWateredToday = true; streakDays++"
           @reflection-updated="onReflectionUpdated"
         />
       </div>
