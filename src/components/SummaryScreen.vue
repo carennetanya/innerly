@@ -205,7 +205,7 @@ import { ref, computed, onMounted } from "vue";
 import { commitmentService } from "../services/commitment.js";
 import { authService } from "../services/auth.js";
 
-const GEMINI_API_KEY = "AIzaSyA7cseaDc0-Q1u50PtYKMcaDwHfzyS5Z6g";
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
 const props = defineProps({
