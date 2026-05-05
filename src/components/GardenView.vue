@@ -178,12 +178,10 @@
     </div>
 
     <!-- Flower Collection Button (floating, bottom left) -->
-    <Transition name="collection-btn-pop">
-      <button v-if="collectedFlowers.length > 0" class="kb-collection-fab" @click="openCollectionPopup" :title="lang === 'id' ? 'Koleksi Bunga' : 'Flower Collection'">
-        <img :src="collectedFlowers[collectedFlowers.length - 1].img" class="kb-collection-fab-img" alt="flower" />
-        <span class="kb-collection-fab-count">{{ collectedFlowers.length }}</span>
-      </button>
-    </Transition>
+    <button class="kb-collection-fab" @click="openCollectionPopup" :title="lang === 'id' ? 'Koleksi Bunga' : 'Flower Collection'">
+      <img :src="collectedFlowers.length > 0 ? collectedFlowers[collectedFlowers.length - 1].img : flowerOptions[0].img" class="kb-collection-fab-img" alt="flower" />
+      <span class="kb-collection-fab-count">{{ collectedFlowers.length }}</span>
+    </button>
 
     <!-- Growth Garden Panel -->
     <Transition name="growth-panel">
