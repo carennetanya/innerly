@@ -12,15 +12,15 @@
         <span class="kb-hi-name">Hi, {{ props.userName || 'there' }} 👋</span>
       </div>
 
-      <!-- Center: Brand (logo + text on desktop) -->
+      <!-- Center: Brand -->
       <div class="kb-brand">
         <img src="/logo.png" alt="Innerly" class="kb-logo" />
         <span class="kb-brand-name kb-brand-name--desktop">Innerly</span>
       </div>
 
-      <!-- Right: Streak + Lang & Dark Mode (desktop only) -->
+      <!-- Right: Streak + Lang & Dark Mode (desktop only for dark mode) -->
       <div class="kb-header-right">
-        <!-- Desktop-only controls -->
+        <!-- Dark mode: desktop only -->
         <button class="kb-profile-icon-btn kb-header-desktop-btn" @click="$emit('toggle-theme')" :title="isDark ? 'Light mode' : 'Dark mode'">
           <svg v-if="isDark" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="5"/>
@@ -34,7 +34,7 @@
           </svg>
         </button>
         <button class="kb-profile-lang-btn kb-header-desktop-btn" @click="$emit('toggle-lang')">
-          {{ lang === 'id' ? 'ID' : 'EN' }}
+          {{ lang === 'id' ? 'Indonesia' : 'English' }}
         </button>
         <div class="kb-streak-container">
           <div class="kb-streak-main">
@@ -61,7 +61,7 @@
             <div class="kb-profile-username">{{ userUsername || props.userName || 'User' }}</div>
             <div class="kb-profile-email">@{{ userUsername || props.userName || 'user' }}</div>
           </div>
-          <!-- Lang & Dark Mode controls (mobile only, desktop shows in header) -->
+          <!-- Lang & dark mode toggle (mobile only, desktop shows in header) -->
           <div class="kb-profile-header-actions kb-profile-actions-mobile">
             <button class="kb-profile-icon-btn" @click="$emit('toggle-theme')" :title="isDark ? 'Light mode' : 'Dark mode'">
               <svg v-if="isDark" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -118,8 +118,8 @@
       <button class="kb-nav-btn" @click="nextMonth">&#8250;</button>
     </div>
 
-    <!-- Calendar grid -->
-    <div class="kb-calendar">
+    <!-- Calendar grid (desktop) -->
+    <div class="kb-calendar kb-calendar-desktop">
       <!-- Day labels -->
       <div class="kb-day-label" v-for="d in dayLabels" :key="d">{{ d }}</div>
 
@@ -168,6 +168,57 @@
           <div class="kb-plot" v-else-if="!isFuture(day)">
             <img src="/dirt.png" alt="dirt" class="kb-dirt-img kb-dirt-img-large" />
           </div>
+      </div>
+    </div>
+
+    <!-- List view (mobile only) -->
+    <div class="kb-list-view">
+      <!-- Month nav -->
+      <div class="kb-list-empty" v-if="listDays.length === 0">
+        <span>🌱 {{ lang === 'id' ? 'Belum ada refleksi bulan ini.' : 'No reflections this month yet.' }}</span>
+      </div>
+      <div
+        v-for="day in listDays"
+        :key="day"
+        class="kb-list-card"
+        :class="{ 'kb-list-card-today': isToday(day) }"
+        @click="onCellClick(day)"
+      >
+        <!-- Date badge -->
+        <div class="kb-list-date">
+          <span class="kb-list-day-num">{{ day }}</span>
+          <span class="kb-list-day-name">{{ getDayName(day) }}</span>
+        </div>
+        <!-- Flowers -->
+        <div class="kb-list-flowers">
+          <div class="kb-list-dirt">
+            <img src="/dirt.png" alt="dirt" class="kb-list-dirt-img" />
+            <div class="kb-list-flower-row">
+              <img
+                v-for="(flower, idx) in getDayFlowers(day).slice(0, 3)"
+                :key="idx"
+                :src="flower.img"
+                :alt="flower.label"
+                class="kb-list-flower-img"
+              />
+              <span v-if="getDayFlowers(day).length > 3" class="kb-list-flower-more">+{{ getDayFlowers(day).length - 3 }}</span>
+            </div>
+          </div>
+        </div>
+        <!-- Mood labels -->
+        <div class="kb-list-moods">
+          <span
+            v-for="(flower, idx) in getDayFlowers(day).slice(0, 2)"
+            :key="idx"
+            class="kb-list-mood-tag"
+          >{{ lang === 'id' ? getMoodLabelId(flower.label) : flower.label }}</span>
+          <span v-if="getDayFlowers(day).length > 2" class="kb-list-mood-more">+{{ getDayFlowers(day).length - 2 }}</span>
+        </div>
+        <!-- Time -->
+        <div class="kb-list-time" v-if="formatCreatedAt(getDayReflections(day)[0]?.created_at)">
+          🕐 {{ formatCreatedAt(getDayReflections(day)[0]?.created_at) }}
+        </div>
+        <span class="kb-list-arrow">›</span>
       </div>
     </div>
 
@@ -731,6 +782,33 @@ const shortMonthLabel = computed(() => {
 const daysInMonth = computed(() => {
   return new Date(viewYear.value, viewMonth.value + 1, 0).getDate()
 })
+
+// Days that have reflections, sorted descending (for list view)
+const listDays = computed(() => {
+  const days = []
+  for (let d = 1; d <= daysInMonth.value; d++) {
+    if (getDayReflections(d).length > 0) days.push(d)
+  }
+  return days.reverse()
+})
+
+function getDayName(day) {
+  const d = new Date(viewYear.value, viewMonth.value, day)
+  const names = {
+    en: ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],
+    id: ['Min','Sen','Sel','Rab','Kam','Jum','Sab']
+  }
+  return (names[props.lang] || names.en)[d.getDay()]
+}
+
+function getMoodLabelId(label) {
+  const map = {
+    'Happy': 'Senang', 'Calm': 'Tenang', 'Excited': 'Bersemangat',
+    'Sad': 'Sedih', 'Anxious': 'Cemas', 'Frustrated': 'Frustrasi',
+    'Confused': 'Bingung', 'Tired': 'Lelah', 'Touched': 'Terharu', 'So-so': 'Biasa aja'
+  }
+  return map[label] || label
+}
 
 const firstDayOfWeek = computed(() => {
   return new Date(viewYear.value, viewMonth.value, 1).getDay()
@@ -1437,17 +1515,6 @@ function closeReflectionWarning() {
   white-space: nowrap;
 }
 
-.kb-brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-shrink: 0;
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 10;
-}
 .kb-logo {
   width: 36px;
   height: 36px;
@@ -1459,7 +1526,7 @@ function closeReflectionWarning() {
 }
 @media (max-width: 768px) {
   .kb-header-desktop-btn {
-    display: none;
+    display: none !important;
   }
 }
 
@@ -1469,10 +1536,22 @@ function closeReflectionWarning() {
 }
 @media (min-width: 769px) {
   .kb-profile-actions-mobile {
-    display: none;
+    display: none !important;
   }
 }
 
+/* Brand: always visible, text hidden on mobile */
+.kb-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+}
 .kb-brand-name {
   font-family: var(--font-heading, 'Playfair Display', serif);
   font-size: 1.25rem;
@@ -1630,6 +1709,9 @@ function closeReflectionWarning() {
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .kb-profile-lang-btn:hover { background: var(--bg-card); }
 .kb-profile-avatar-lg {
@@ -1803,6 +1885,133 @@ function closeReflectionWarning() {
 }
 
 /* ── Calendar ── */
+/* Desktop: show grid, hide list */
+.kb-calendar-desktop { display: grid; }
+.kb-list-view { display: none; }
+@media (max-width: 768px) {
+  .kb-calendar-desktop { display: none !important; }
+  .kb-list-view { display: flex; }
+  /* also hide the day-labels row which is inside the grid */
+}
+
+/* List view */
+.kb-list-view {
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  flex: 1;
+  overflow-y: auto;
+}
+.kb-list-empty {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+  padding: 40px 0;
+}
+.kb-list-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg-card);
+  border-radius: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  position: relative;
+}
+.kb-list-card:active { transform: scale(0.98); }
+.kb-list-card-today {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+.kb-list-date {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 36px;
+}
+.kb-list-day-num {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1;
+}
+.kb-list-day-name {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+.kb-list-flowers {
+  flex-shrink: 0;
+}
+.kb-list-dirt {
+  position: relative;
+  width: 72px;
+  height: 48px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.kb-list-dirt-img {
+  position: absolute;
+  bottom: 0;
+  width: 72px;
+  height: 38px;
+  object-fit: cover;
+}
+.kb-list-flower-row {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 2px;
+  padding-bottom: 6px;
+}
+.kb-list-flower-img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+.kb-list-flower-more {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+.kb-list-moods {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.kb-list-mood-tag {
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  color: var(--accent);
+  border-radius: 20px;
+  padding: 3px 9px;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+.kb-list-mood-more {
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  align-self: center;
+}
+.kb-list-time {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.kb-list-arrow {
+  color: var(--text-secondary);
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
 .kb-calendar {
   flex: 1;
   display: grid;
@@ -2131,6 +2340,28 @@ function closeReflectionWarning() {
   border-bottom: 8px solid transparent;
   border-left: 10px solid rgba(255, 246, 238, 0.98);
 }
+@media (max-width: 768px) {
+  .kb-fab-chat-bubble {
+    right: 0;
+    left: auto;
+    top: auto;
+    bottom: calc(100% + 10px);
+    transform: none;
+    width: 200px;
+    text-align: center;
+  }
+  .kb-fab-chat-bubble::after {
+    top: auto;
+    right: 28px;
+    bottom: -10px;
+    left: auto;
+    transform: none;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-top: 10px solid rgba(255, 246, 238, 0.98);
+    border-bottom: none;
+  }
+}
 .kb-fab-chat-text {
   display: block;
   font-weight: 600;
@@ -2221,6 +2452,8 @@ function closeReflectionWarning() {
   align-items: center;
   justify-content: center;
   padding: 20px;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 .kb-popup {
   background: var(--bg-card);
@@ -3158,6 +3391,17 @@ function closeReflectionWarning() {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 10px;
+}
+@media (max-width: 768px) {
+  .kb-collection-popup {
+    max-width: 100%;
+    padding: 20px 16px;
+    box-sizing: border-box;
+  }
+  .kb-collection-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
 }
 .kb-collection-slot {
   display: flex;

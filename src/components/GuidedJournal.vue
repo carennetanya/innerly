@@ -845,6 +845,12 @@ function startNew() {
   grid-template-columns: repeat(4, 1fr);
   gap: 10px;
 }
+@media (max-width: 768px) {
+  .gj-mood-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+}
 .gj-mood-btn {
   display: flex;
   flex-direction: column;
