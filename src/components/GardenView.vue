@@ -1164,6 +1164,15 @@ function confirmFlower() {
   setTimeout(() => {
     chosenFlower.value = null
     localStorage.removeItem('innerly_chosen_flower')
+    // Also clear from DB so next cycle doesn't skip the picker
+    const userId = props.userId
+    if (userId) {
+      fetch(`/api/streak/${userId}/flower`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ flower: null })
+      }).catch(() => {})
+    }
   }, 3500)
 
   // Save chosen flower to DB so it persists across logout/login
@@ -1370,7 +1379,10 @@ function triggerWatering() {
     // Flower picker muncul kalau (streakDays + 1) % 3 === 0, artinya baru selesai siklus ke-N.
     const newStreak = (props.streakDays || 0) + 1
     const completesACycle = newStreak % 3 === 0
-    if (completesACycle && !chosenFlower.value) {
+    if (completesACycle) {
+      // Always show picker when completing a cycle — reset any stale chosen flower first
+      chosenFlower.value = null
+      localStorage.removeItem('innerly_chosen_flower')
       setTimeout(() => { showFlowerPicker.value = true }, 400)
     }
   }, 1800)
