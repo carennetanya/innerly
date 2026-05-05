@@ -3180,7 +3180,7 @@ function closeReflectionWarning() {
   border: 1.5px solid white;
   box-shadow: 0 1px 4px rgba(0,0,0,0.2);
 }
-.kb-collection-hin {
+.kb-collection-hint {
   font-size: 0.78rem;
   color: var(--text-secondary);
   text-align: center;
