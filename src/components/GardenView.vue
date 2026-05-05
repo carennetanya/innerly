@@ -12,9 +12,10 @@
         <span class="kb-hi-name">Hi, {{ props.userName || 'there' }} 👋</span>
       </div>
 
-      <!-- Center: Brand (logo only, no text) -->
+      <!-- Center: Brand (logo + text on desktop) -->
       <div class="kb-brand">
         <img src="/logo.png" alt="Innerly" class="kb-logo" />
+        <span class="kb-brand-name kb-brand-name--desktop">Innerly</span>
       </div>
 
       <!-- Right: Streak only (lang & dark mode moved to profile dropdown) -->
@@ -1443,6 +1444,14 @@ function closeReflectionWarning() {
   font-size: 1.25rem;
   font-weight: 700;
   color: var(--text-primary);
+}
+.kb-brand-name--desktop {
+  display: inline;
+}
+@media (max-width: 768px) {
+  .kb-brand-name--desktop {
+    display: none;
+  }
 }
 
 /* Right: streak */
