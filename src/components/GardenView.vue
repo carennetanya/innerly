@@ -18,8 +18,24 @@
         <span class="kb-brand-name kb-brand-name--desktop">Innerly</span>
       </div>
 
-      <!-- Right: Streak only (lang & dark mode moved to profile dropdown) -->
+      <!-- Right: Streak + Lang & Dark Mode (desktop only) -->
       <div class="kb-header-right">
+        <!-- Desktop-only controls -->
+        <button class="kb-profile-icon-btn kb-header-desktop-btn" @click="$emit('toggle-theme')" :title="isDark ? 'Light mode' : 'Dark mode'">
+          <svg v-if="isDark" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"/>
+            <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+            <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+          </svg>
+          <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+        </button>
+        <button class="kb-profile-lang-btn kb-header-desktop-btn" @click="$emit('toggle-lang')">
+          {{ lang === 'id' ? 'ID' : 'EN' }}
+        </button>
         <div class="kb-streak-container">
           <div class="kb-streak-main">
             <img :src="headerStreakImg" alt="streak plant" class="kb-streak-plant-img" />
@@ -45,8 +61,8 @@
             <div class="kb-profile-username">{{ userUsername || props.userName || 'User' }}</div>
             <div class="kb-profile-email">@{{ userUsername || props.userName || 'user' }}</div>
           </div>
-          <!-- Lang & Dark Mode controls -->
-          <div class="kb-profile-header-actions">
+          <!-- Lang & Dark Mode controls (mobile only, desktop shows in header) -->
+          <div class="kb-profile-header-actions kb-profile-actions-mobile">
             <button class="kb-profile-icon-btn" @click="$emit('toggle-theme')" :title="isDark ? 'Light mode' : 'Dark mode'">
               <svg v-if="isDark" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="12" cy="12" r="5"/>
@@ -1437,6 +1453,26 @@ function closeReflectionWarning() {
   height: 36px;
   object-fit: contain;
 }
+/* Desktop header controls */
+.kb-header-desktop-btn {
+  display: flex;
+}
+@media (max-width: 768px) {
+  .kb-header-desktop-btn {
+    display: none;
+  }
+}
+
+/* Profile dropdown controls - mobile only */
+.kb-profile-actions-mobile {
+  display: flex;
+}
+@media (min-width: 769px) {
+  .kb-profile-actions-mobile {
+    display: none;
+  }
+}
+
 .kb-brand-name {
   font-family: var(--font-heading, 'Playfair Display', serif);
   font-size: 1.25rem;
