@@ -1364,14 +1364,13 @@ function triggerWatering() {
       console.warn('[Innerly] triggerWatering: userId not found (user not logged in), skipping DB save');
     }
     emit('watered')
-    // Tampilkan flower picker saat Day 3 dalam siklus.
-    // Karena props.streakDays belum di-update parent saat ini,
-    // kita hitung manual: streakDays + 1 (setelah siram hari ini)
+    // Tampilkan flower picker saat menyelesaikan siklus 3 hari.
+    // streakDays adalah hari yang sudah selesai (sudah disiram sebelumnya).
+    // Setelah siram hari ini, streak efektif = streakDays + 1.
+    // Flower picker muncul kalau (streakDays + 1) % 3 === 0, artinya baru selesai siklus ke-N.
     const newStreak = (props.streakDays || 0) + 1
-    const newMod = newStreak % 3
-    const newCycleDay = newMod === 0 ? 3 : newMod
-    const nextStage = newCycleDay >= 3 ? 'flower' : (newCycleDay === 2 ? 'sprout' : 'seed')
-    if (nextStage === 'flower' && !chosenFlower.value) {
+    const completesACycle = newStreak % 3 === 0
+    if (completesACycle && !chosenFlower.value) {
       setTimeout(() => { showFlowerPicker.value = true }, 400)
     }
   }, 1800)
