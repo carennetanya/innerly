@@ -1412,16 +1412,13 @@ const currentMonthShort = computed(() => {
 
 // How many days into current 3-day cycle
 const streakInCycle = computed(() => {
-  // dayInCycle = posisi hari ini dalam siklus 3 hari
-  // Sama dengan plantStage: (completedDays % 3) + 1
-  // Tapi untuk progress bar, kita mau tampilkan berapa hari sudah selesai di siklus ini
-  // Setelah siram → pakai streak baru (completedDays + 1), sebelum siram → pakai completedDays
-  const completedDays = hasWateredLocally.value
-    ? (props.streakDays || 0) + 1
-    : (props.streakDays || 0)
-  if (completedDays <= 0) return 0
-  const mod = completedDays % 3
-  return mod === 0 ? 3 : mod
+  const completedDays = props.streakDays || 0
+  // Belum pernah siram → hari pertama
+  if (completedDays === 0 && !hasWateredLocally.value) return 1
+  // Pakai formula sama dengan plantStage
+  return hasWateredLocally.value
+    ? ((completedDays - 1) % 3) + 1
+    : (completedDays % 3) + 1
 })
 
 const cycleProgress = computed(() => {
@@ -1430,30 +1427,29 @@ const cycleProgress = computed(() => {
 
 // Plant stage:
 // Siklus 3 hari berulang terus:
-// Day 1 (streak 0,3,6,...): belum siram → dirt,   sudah siram → seed
-// Day 2 (streak 1,4,7,...): belum siram → seed,   sudah siram → sprout/leaf
-// Day 3 (streak 2,5,8,...): belum siram → sprout, sudah siram → flower + picker
+// Day 1 (cycle 1): belum siram → dirt,   sudah siram → seed
+// Day 2 (cycle 2): belum siram → seed,   sudah siram → sprout/leaf
+// Day 3 (cycle 3): belum siram → sprout, sudah siram → flower + picker
+//
+// PENTING: streakDays dari DB = total hari yg sudah selesai TERMASUK hari ini (setelah siram).
+// Saat belum siram: hari ini belum terhitung → dayInCycle = (streakDays % 3) + 1
+// Saat sudah siram: hari ini sudah terhitung → dayInCycle = ((streakDays - 1) % 3) + 1
+// Contoh dengan streakDays dari DB:
+//   DB=0, belum siram → day 1 → dirt
+//   DB=1, sudah siram → day 1 selesai → seed   | DB=1, belum siram → day 2 → seed
+//   DB=2, sudah siram → day 2 selesai → sprout | DB=2, belum siram → day 3 → sprout
+//   DB=3, sudah siram → day 3 selesai → flower | DB=3, belum siram → day 1 baru → dirt
+//   DB=5, sudah siram → day 2 selesai → sprout ← fix screenshot day 5
 const plantStage = computed(() => {
   const completedDays = props.streakDays || 0
 
-  // Jika belum pernah siram sama sekali → selalu dirt
+  // Belum pernah siram sama sekali → dirt
   if (completedDays === 0 && !hasWateredLocally.value) return 'dirt'
 
-  // dayInCycle: posisi hari ini dalam siklus 3 hari (1, 2, atau 3)
-  // completedDays = jumlah hari yang sudah selesai disiram sebelumnya
-  // Hari ini kita ada di posisi (completedDays % 3) + 1
-  // Contoh:
-  //   streak 0 → dayInCycle 1 (hari pertama siklus baru)
-  //   streak 1 → dayInCycle 2
-  //   streak 2 → dayInCycle 3
-  //   streak 3 → dayInCycle 1 (siklus baru lagi)
-  //   streak 4 → dayInCycle 2
-  //   dst.
-  const dayInCycle = (completedDays % 3) + 1
+  const dayInCycle = hasWateredLocally.value
+    ? ((completedDays - 1) % 3) + 1   // hari ini sudah terhitung di streakDays
+    : (completedDays % 3) + 1          // hari ini belum terhitung
 
-  // Day 1: sebelum siram → dirt, sesudah siram → seed
-  // Day 2: sebelum siram → seed (dari kemarin), sesudah siram → sprout/leaf
-  // Day 3: sebelum siram → sprout (dari kemarin), sesudah siram → flower
   if (dayInCycle === 1) return hasWateredLocally.value ? 'seed' : 'dirt'
   if (dayInCycle === 2) return hasWateredLocally.value ? 'sprout' : 'seed'
   if (dayInCycle === 3) return hasWateredLocally.value ? 'flower' : 'sprout'
