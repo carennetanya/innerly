@@ -574,12 +574,17 @@ async function onJournalDone(data) {
     try {
       await reflectionService.saveReflection(userId, newRef);
       console.log('[Innerly] Reflection saved to DB successfully');
-      // After successful save, fetch authoritative streak from DB
+      // Update streak in DB after saving reflection
       try {
-        const streakRes = await fetch(`/api/streak/${userId}`);
-        const streakData = await streakRes.json();
-        if (streakData && typeof streakData.streak === 'number' && streakData.streak > 0) {
+        const streakUpdateRes = await fetch(`/api/streak/${userId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ today: dateKey })
+        });
+        const streakData = await streakUpdateRes.json();
+        if (streakData && typeof streakData.streak === 'number') {
           streakDays.value = streakData.streak;
+          console.log('[Innerly] Streak updated in DB:', streakData.streak);
         }
       } catch { /* keep computeStreak value if fetch fails */ }
     } catch (err) {
