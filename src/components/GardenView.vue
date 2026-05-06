@@ -1062,24 +1062,39 @@ function loadCollectedFlowers() {
     if (stored) collectedFlowers.value = JSON.parse(stored)
   } catch {}
 
-  // Also load from DB to ensure persistence across devices
+  // Load from DB — DB is source of truth for cross-device sync
   const userId = props.userId
   if (userId) {
     fetch(`/api/streak/${userId}/collection`)
       .then(r => r.json())
       .then(data => {
-        if (data.flowers && data.flowers.length > 0) {
-          // Merge DB flowers with local, DB takes precedence if more
-          if (data.flowers.length >= collectedFlowers.value.length) {
-            collectedFlowers.value = data.flowers
-            saveCollectedFlowers()
+        const dbFlowers = (data.flowers && Array.isArray(data.flowers)) ? data.flowers : []
+        const localFlowers = collectedFlowers.value || []
+
+        if (dbFlowers.length === 0 && localFlowers.length === 0) return
+
+        // Merge: union of both — ambil semua bunga unik dari DB dan local
+        // Pakai key sebagai identifier supaya tidak duplikat
+        const merged = [...dbFlowers]
+        for (const lf of localFlowers) {
+          if (!merged.some(f => f.key === lf.key)) {
+            merged.push(lf)
           }
-        } else if (collectedFlowers.value.length > 0) {
-          // Sync local to DB if DB is empty but local has data
+        }
+
+        collectedFlowers.value = merged
+        // Simpan hasil merge ke localStorage
+        try {
+          localStorage.setItem(getCollectionKey(), JSON.stringify(merged))
+        } catch {}
+        // Sync merged result ke DB (supaya DB juga up-to-date)
+        if (merged.length > dbFlowers.length) {
           syncCollectionToDb()
         }
       })
-      .catch(() => {})
+      .catch(() => {
+        // DB gagal → tetap pakai localStorage (sudah di-load di atas)
+      })
   }
 }
 
@@ -1090,14 +1105,24 @@ function saveCollectedFlowers() {
   syncCollectionToDb()
 }
 
-function syncCollectionToDb() {
+function syncCollectionToDb(retryCount = 0) {
   const userId = props.userId
   if (!userId) return
   fetch(`/api/streak/${userId}/collection`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ flowers: collectedFlowers.value })
-  }).catch(() => {})
+  })
+    .then(res => { if (!res.ok) throw new Error('HTTP ' + res.status) })
+    .catch(e => {
+      // Retry sekali setelah 3 detik kalau gagal
+      if (retryCount < 1) {
+        console.warn('[Innerly] syncCollectionToDb failed, retrying...', e)
+        setTimeout(() => syncCollectionToDb(retryCount + 1), 3000)
+      } else {
+        console.error('[Innerly] syncCollectionToDb failed after retry:', e)
+      }
+    })
 }
 
 function isFlowerCollected(key) {
@@ -1154,17 +1179,21 @@ function confirmFlower() {
       labelId: pickedOption.labelId,
       collectedAt: new Date().toISOString(),
     })
-    saveCollectedFlowers()
-    // Show collection bubble after a short delay (let watering animation finish)
+    // Simpan ke localStorage dulu (instant)
+    try {
+      localStorage.setItem(getCollectionKey(), JSON.stringify(collectedFlowers.value))
+    } catch {}
+    // Sync ke DB — langsung, bukan lewat saveCollectedFlowers supaya tidak race condition
+    syncCollectionToDb()
+    // Show collection bubble after a short delay
     setTimeout(() => triggerCollectionBubble(), 2200)
   }
 
-  // Reset plant to dirt after this cycle — next watering starts fresh
-  // We use a small delay so the flower is visible briefly
+  // Reset plant to dirt after this cycle — clear chosen flower setelah 3.5 detik
   setTimeout(() => {
     chosenFlower.value = null
     localStorage.removeItem('innerly_chosen_flower')
-    // Also clear from DB so next cycle doesn't skip the picker
+    // Clear dari DB juga supaya siklus berikutnya picker muncul lagi
     const userId = props.userId
     if (userId) {
       fetch(`/api/streak/${userId}/flower`, {
@@ -1175,10 +1204,9 @@ function confirmFlower() {
     }
   }, 3500)
 
-  // Save chosen flower to DB so it persists across logout/login
+  // Simpan chosen flower ke DB supaya persist across login
   const userId = props.userId
   if (userId) {
-    console.log('[Innerly] Saving chosen flower to DB:', pickedImg, 'for userId:', userId);
     fetch(`/api/streak/${userId}/flower`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1186,9 +1214,9 @@ function confirmFlower() {
     })
       .then(res => res.json())
       .then(data => console.log('[Innerly] Flower saved to DB:', data))
-      .catch(e => console.error('[Innerly] FAILED to save flower to DB:', e));
+      .catch(e => console.error('[Innerly] FAILED to save flower to DB:', e))
   } else {
-    console.warn('[Innerly] confirmFlower: userId is null, cannot save to DB. User must be logged in.');
+    console.warn('[Innerly] confirmFlower: userId is null, cannot save to DB.')
   }
   tempFlower.value = null
 }
