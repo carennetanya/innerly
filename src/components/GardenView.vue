@@ -1228,7 +1228,12 @@ function onFlowerPickerClose() {
   tempFlower.value = null
 }
 
-// Load watered state + chosen flower from DB
+// ── wateredStreak: streak yang hanya naik setelah SIRAM, bukan setelah refleksi ──
+// Dipakai untuk hitung plant stage & cycle position — diambil dari DB field streak
+// null = belum load dari DB, fallback ke props.streakDays
+const wateredStreak = ref(null)
+
+// Load watered state + chosen flower + wateredStreak dari DB
 async function loadUserDataFromDB(userId) {
   if (!userId) return;
   try {
@@ -1236,6 +1241,10 @@ async function loadUserDataFromDB(userId) {
     if (!res.ok) return;
     const data = await res.json();
     console.log('[Innerly] Loaded streak data from DB:', data);
+    // Simpan wateredStreak dari DB
+    if (typeof data.streak === 'number') {
+      wateredStreak.value = data.streak;
+    }
     // Sync watered state
     if (data.last_watered_date) {
       const watered = data.last_watered_date.split('T')[0];
@@ -1401,14 +1410,15 @@ function triggerWatering() {
       console.warn('[Innerly] triggerWatering: userId not found (user not logged in), skipping DB save');
     }
     emit('watered')
-    // Tampilkan flower picker saat menyelesaikan siklus 3 hari.
-    // streakDays adalah hari yang sudah selesai (sudah disiram sebelumnya).
-    // Setelah siram hari ini, streak efektif = streakDays + 1.
-    // Flower picker muncul kalau (streakDays + 1) % 3 === 0, artinya baru selesai siklus ke-N.
-    const newStreak = (props.streakDays || 0) + 1
+    // Update wateredStreak lokal supaya plantStage langsung berubah tanpa reload
+    // wateredStreak bertambah 1 setelah siram
+    const prevStreak = wateredStreak.value !== null ? wateredStreak.value : (props.streakDays || 0)
+    const newStreak = prevStreak + 1
+    wateredStreak.value = newStreak
+
+    // Flower picker muncul kalau newStreak % 3 === 0 (selesai siklus)
     const completesACycle = newStreak % 3 === 0
     if (completesACycle) {
-      // Always show picker when completing a cycle — reset any stale chosen flower first
       chosenFlower.value = null
       localStorage.removeItem('innerly_chosen_flower')
       setTimeout(() => { showFlowerPicker.value = true }, 400)
@@ -1439,8 +1449,26 @@ const currentMonthShort = computed(() => {
 })
 
 // How many days into current 3-day cycle
+// effectiveStreak: streak yang benar untuk hitung plant stage
+// Prioritas: wateredStreak dari DB (akurat) → fallback ke props.streakDays
+// TIDAK pakai props.streakDays langsung karena itu naik setiap refleksi,
+// sedangkan plant stage harusnya hanya naik setelah SIRAM
+const effectiveStreak = computed(() => {
+  // Kalau wateredStreak sudah load dari DB, pakai itu
+  if (wateredStreak.value !== null) return wateredStreak.value
+  // Fallback: kalau belum load (baru mount), pakai props.streakDays
+  // tapi kurangi 1 kalau belum siram hari ini, karena streak dari refleksi
+  // bisa sudah terhitung hari ini padahal belum siram
+  if (!hasWateredLocally.value && props.streakDays > 0) {
+    // Cek apakah streak dari props sudah include hari ini (dari refleksi hari ini)
+    // Kita tidak bisa tahu pasti → pakai props.streakDays - 1 sebagai safe fallback
+    return Math.max(0, props.streakDays - 1)
+  }
+  return props.streakDays || 0
+})
+
 const streakInCycle = computed(() => {
-  const completedDays = props.streakDays || 0
+  const completedDays = effectiveStreak.value
   // Belum pernah siram → hari pertama
   if (completedDays === 0 && !hasWateredLocally.value) return 1
   // Pakai formula sama dengan plantStage
@@ -1453,29 +1481,21 @@ const cycleProgress = computed(() => {
   return (streakInCycle.value / 3) * 100
 })
 
-// Plant stage:
-// Siklus 3 hari berulang terus:
-// Day 1 (cycle 1): belum siram → dirt,   sudah siram → seed
-// Day 2 (cycle 2): belum siram → seed,   sudah siram → sprout/leaf
-// Day 3 (cycle 3): belum siram → sprout, sudah siram → flower + picker
+// Plant stage berdasarkan effectiveStreak (bukan props.streakDays)
+// sehingga stage tidak naik hanya karena user menulis refleksi
+// Stage naik hanya setelah user SIRAM (hasWateredLocally)
 //
-// PENTING: streakDays dari DB = total hari yg sudah selesai TERMASUK hari ini (setelah siram).
-// Saat belum siram: hari ini belum terhitung → dayInCycle = (streakDays % 3) + 1
-// Saat sudah siram: hari ini sudah terhitung → dayInCycle = ((streakDays - 1) % 3) + 1
-// Contoh dengan streakDays dari DB:
-//   DB=0, belum siram → day 1 → dirt
-//   DB=1, sudah siram → day 1 selesai → seed   | DB=1, belum siram → day 2 → seed
-//   DB=2, sudah siram → day 2 selesai → sprout | DB=2, belum siram → day 3 → sprout
-//   DB=3, sudah siram → day 3 selesai → flower | DB=3, belum siram → day 1 baru → dirt
-//   DB=5, sudah siram → day 2 selesai → sprout ← fix screenshot day 5
+// effectiveStreak = streak yang hanya bertambah setelah siram (dari DB)
+// Saat belum siram hari ini: dayInCycle = (effectiveStreak % 3) + 1
+// Saat sudah siram hari ini: dayInCycle = ((effectiveStreak - 1) % 3) + 1
 const plantStage = computed(() => {
-  const completedDays = props.streakDays || 0
+  const completedDays = effectiveStreak.value
 
   // Belum pernah siram sama sekali → dirt
   if (completedDays === 0 && !hasWateredLocally.value) return 'dirt'
 
   const dayInCycle = hasWateredLocally.value
-    ? ((completedDays - 1) % 3) + 1   // hari ini sudah terhitung di streakDays
+    ? ((completedDays - 1) % 3) + 1   // hari ini sudah terhitung di streak
     : (completedDays % 3) + 1          // hari ini belum terhitung
 
   if (dayInCycle === 1) return hasWateredLocally.value ? 'seed' : 'dirt'
