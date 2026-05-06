@@ -1234,6 +1234,7 @@ function onFlowerPickerClose() {
 const wateredStreak = ref(null)
 
 // Load watered state + chosen flower + wateredStreak dari DB
+// DB is ALWAYS source of truth — overrides localStorage for cross-device consistency
 async function loadUserDataFromDB(userId) {
   if (!userId) return;
   try {
@@ -1241,23 +1242,38 @@ async function loadUserDataFromDB(userId) {
     if (!res.ok) return;
     const data = await res.json();
     console.log('[Innerly] Loaded streak data from DB:', data);
-    // Simpan wateredStreak dari DB
+
+    // wateredStreak: streak dari DB (hanya naik setelah siram)
     if (typeof data.streak === 'number') {
       wateredStreak.value = data.streak;
     }
-    // Sync watered state
+
+    // hasWateredLocally: cek last_watered_date dari DB
+    // DB is source of truth — jika DB bilang sudah siram hari ini, sync ke semua device
+    const todayKey = getTodayKey();
     if (data.last_watered_date) {
-      const watered = data.last_watered_date.split('T')[0];
-      if (watered === getTodayKey()) {
+      const watered = data.last_watered_date.toString().split('T')[0];
+      if (watered === todayKey) {
         hasWateredLocally.value = true;
-        localStorage.setItem('innerly_watered_date', getTodayKey());
+        localStorage.setItem('innerly_watered_date', todayKey);
+      } else {
+        // DB bilang belum siram hari ini — reset state lokal
+        hasWateredLocally.value = false;
+        localStorage.removeItem('innerly_watered_date');
       }
+    } else {
+      // Belum pernah siram sama sekali
+      hasWateredLocally.value = false;
+      localStorage.removeItem('innerly_watered_date');
     }
-    // Load chosen flower — DB is source of truth, overrides localStorage
+
+    // Load chosen flower — DB is source of truth
     if (data.chosen_flower) {
       chosenFlower.value = data.chosen_flower;
       localStorage.setItem('innerly_chosen_flower', data.chosen_flower);
-      console.log('[Innerly] Restored chosen flower from DB:', data.chosen_flower);
+    } else {
+      chosenFlower.value = null;
+      localStorage.removeItem('innerly_chosen_flower');
     }
   } catch (e) {
     console.warn('[Innerly] loadUserDataFromDB error:', e);
@@ -1288,22 +1304,12 @@ watch(() => props.userId, async (newId, oldId) => {
 }, { immediate: false });
 
 // Watch streakDays — setiap kali ada refleksi baru (streakDays naik),
-// reload wateredStreak dari DB supaya plant stage tidak ikut naik.
-// DB streak hanya berubah setelah siram, bukan setelah refleksi.
+// reload wateredStreak DAN hasWateredLocally dari DB.
+// Ini juga memastikan cross-device sync: device baru dapat state siram dari DB.
 watch(() => props.streakDays, async () => {
   const userId = props.userId;
   if (!userId) return;
-  try {
-    const res = await fetch(`/api/streak/${userId}`);
-    if (!res.ok) return;
-    const data = await res.json();
-    if (typeof data.streak === 'number') {
-      wateredStreak.value = data.streak;
-      console.log('[Innerly] wateredStreak refreshed after streakDays change:', data.streak);
-    }
-  } catch (e) {
-    console.warn('[Innerly] Failed to refresh wateredStreak:', e);
-  }
+  await loadUserDataFromDB(userId);
 });
 
 // Touch drag state
