@@ -1407,11 +1407,13 @@ function triggerWatering() {
         .then(res => res.json())
         .then(data => {
           console.log('[Innerly] Watered saved to DB:', data);
-          // Server returns the authoritative streak value
-          const newStreak = typeof data.streak === 'number' ? data.streak : wateredStreak.value;
-          wateredStreak.value = newStreak;
-          // Flower picker only triggered by server-confirmed cycle completion
-          const completesACycle = newStreak % 3 === 0 && newStreak > 0;
+          // Server returns streak from DB (does NOT include today's watering)
+          // hasWateredLocally is already true, so totalWaterings = streak + 1 via computed
+          const dbStreak = typeof data.streak === 'number' ? data.streak : wateredStreak.value;
+          wateredStreak.value = dbStreak;
+          // Flower picker: total waterings (streak + 1 for today) completes a cycle
+          const total = dbStreak + 1;
+          const completesACycle = total % 3 === 0 && total > 0;
           if (completesACycle) {
             chosenFlower.value = null;
             localStorage.removeItem('innerly_chosen_flower');
@@ -1455,60 +1457,41 @@ const currentMonthShort = computed(() => {
   return (months[props.lang] || months.en)[todayDate.getMonth()]
 })
 
-// How many days into current 3-day cycle
-// effectiveStreak: streak yang benar untuk hitung plant stage
-// Prioritas: wateredStreak dari DB (akurat) → fallback ke props.streakDays
-// TIDAK pakai props.streakDays langsung karena itu naik setiap refleksi,
-// sedangkan plant stage harusnya hanya naik setelah SIRAM
+// ── Plant stage logic ──
+// streak (dari DB) = jumlah hari yang sudah disiram sebelum hari ini
+// hasWateredLocally = apakah sudah siram HARI INI (belum masuk DB)
+// totalWaterings = streak + (1 kalau sudah siram hari ini)
+// posInCycle = posisi dalam siklus 3-hari: 1=seed, 2=sprout, 3=flower
+
+// Streak dari DB (load via loadUserDataFromDB)
+// Kalau belum load → fallback ke props.streakDays
 const effectiveStreak = computed(() => {
-  // Kalau wateredStreak sudah load dari DB, pakai itu
   if (wateredStreak.value !== null) return wateredStreak.value
-  // Fallback: kalau belum load (baru mount), pakai props.streakDays
-  // tapi kurangi 1 kalau belum siram hari ini, karena streak dari refleksi
-  // bisa sudah terhitung hari ini padahal belum siram
-  if (!hasWateredLocally.value && props.streakDays > 0) {
-    // Cek apakah streak dari props sudah include hari ini (dari refleksi hari ini)
-    // Kita tidak bisa tahu pasti → pakai props.streakDays - 1 sebagai safe fallback
-    return Math.max(0, props.streakDays - 1)
-  }
   return props.streakDays || 0
 })
 
-const streakInCycle = computed(() => {
-  const completedDays = effectiveStreak.value
-  // Sudah siram hari ini: streak hari ini terhitung, posisi = ((streak-1) % 3) + 1
-  // Contoh: streak=1 → hari ke-1, streak=2 → hari ke-2, streak=3 → hari ke-3
-  if (hasWateredLocally.value) return ((completedDays - 1) % 3) + 1
-  // Belum siram hari ini: tampilkan posisi SEBELUM siram hari ini
-  // Contoh: streak=1 (siram kemarin) → posisi = 1 % 3 = 1, tapi belum tambah hari ini
-  // streak=0 → belum mulai = 0
-  return completedDays % 3
+// Total waterings termasuk hari ini (kalau sudah siram)
+const totalWaterings = computed(() => {
+  return effectiveStreak.value + (hasWateredLocally.value ? 1 : 0)
 })
+
+// Posisi dalam siklus 3-hari (1, 2, atau 3)
+const posInCycle = computed(() => {
+  if (totalWaterings.value === 0) return 0
+  return ((totalWaterings.value - 1) % 3) + 1
+})
+
+const streakInCycle = computed(() => posInCycle.value)
 
 const cycleProgress = computed(() => {
-  return (streakInCycle.value / 3) * 100
+  return (posInCycle.value / 3) * 100
 })
 
-// Plant stage berdasarkan effectiveStreak (bukan props.streakDays)
-// sehingga stage tidak naik hanya karena user menulis refleksi
-// Stage naik hanya setelah user SIRAM (hasWateredLocally)
-//
-// effectiveStreak = streak yang hanya bertambah setelah siram (dari DB)
-// Saat belum siram hari ini: dayInCycle = (effectiveStreak % 3) + 1
-// Saat sudah siram hari ini: dayInCycle = ((effectiveStreak - 1) % 3) + 1
 const plantStage = computed(() => {
-  const completedDays = effectiveStreak.value
-
-  // Belum pernah siram sama sekali → dirt
-  if (completedDays === 0 && !hasWateredLocally.value) return 'dirt'
-
-  const dayInCycle = hasWateredLocally.value
-    ? ((completedDays - 1) % 3) + 1   // hari ini sudah terhitung di streak
-    : (completedDays % 3) + 1          // hari ini belum terhitung
-
-  if (dayInCycle === 1) return hasWateredLocally.value ? 'seed' : 'dirt'
-  if (dayInCycle === 2) return hasWateredLocally.value ? 'sprout' : 'seed'
-  if (dayInCycle === 3) return hasWateredLocally.value ? 'flower' : 'sprout'
+  if (totalWaterings.value === 0) return 'dirt'
+  if (posInCycle.value === 1) return 'seed'
+  if (posInCycle.value === 2) return 'sprout'
+  if (posInCycle.value === 3) return 'flower'
   return 'dirt'
 })
 

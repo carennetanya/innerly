@@ -49,29 +49,22 @@ router.post("/:userId", async (req, res) => {
 
 // POST /api/streak/:userId/water
 // { date: "2026-04-29" }
+// NOTE: Streak is managed by the reflection endpoint (POST /:userId).
+// Watering does NOT increment streak — it only records the watered date.
+// The current streak value is returned so the frontend can display plant stage correctly.
 router.post("/:userId/water", async (req, res) => {
   try {
     const { userId } = req.params;
     const { date } = req.body;
     if (!date) return res.status(400).json({ error: "date is required" });
 
-    // Get current streak data
-    const streakData = await Streak.getStreak(userId);
-    let { streak, last_watered_date } = streakData;
-    streak = streak || 0;
-
-    // Only increment watered_streak if not already watered today
-    const lastWatered = last_watered_date
-      ? last_watered_date.toString().split("T")[0]
-      : null;
-    let newStreak = streak;
-    if (lastWatered !== date) {
-      newStreak = streak + 1;
-      await Streak.updateStreak(userId, newStreak, streakData.last_reflection_date);
-    }
-
     await Streak.setWatered(userId, date);
-    res.json({ watered: true, date, streak: newStreak });
+
+    // Return current streak (unchanged) so frontend can compute plant stage
+    const streakData = await Streak.getStreak(userId);
+    const streak = streakData.streak || 0;
+
+    res.json({ watered: true, date, streak });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
