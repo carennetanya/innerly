@@ -1476,12 +1476,13 @@ const effectiveStreak = computed(() => {
 
 const streakInCycle = computed(() => {
   const completedDays = effectiveStreak.value
-  // Belum pernah siram → hari pertama
-  if (completedDays === 0 && !hasWateredLocally.value) return 1
-  // Pakai formula sama dengan plantStage
-  return hasWateredLocally.value
-    ? ((completedDays - 1) % 3) + 1
-    : (completedDays % 3) + 1
+  // Sudah siram hari ini: streak hari ini terhitung, posisi = ((streak-1) % 3) + 1
+  // Contoh: streak=1 → hari ke-1, streak=2 → hari ke-2, streak=3 → hari ke-3
+  if (hasWateredLocally.value) return ((completedDays - 1) % 3) + 1
+  // Belum siram hari ini: tampilkan posisi SEBELUM siram hari ini
+  // Contoh: streak=1 (siram kemarin) → posisi = 1 % 3 = 1, tapi belum tambah hari ini
+  // streak=0 → belum mulai = 0
+  return completedDays % 3
 })
 
 const cycleProgress = computed(() => {
