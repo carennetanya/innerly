@@ -55,8 +55,23 @@ router.post("/:userId/water", async (req, res) => {
     const { date } = req.body;
     if (!date) return res.status(400).json({ error: "date is required" });
 
+    // Get current streak data
+    const streakData = await Streak.getStreak(userId);
+    let { streak, last_watered_date } = streakData;
+    streak = streak || 0;
+
+    // Only increment watered_streak if not already watered today
+    const lastWatered = last_watered_date
+      ? last_watered_date.toString().split("T")[0]
+      : null;
+    let newStreak = streak;
+    if (lastWatered !== date) {
+      newStreak = streak + 1;
+      await Streak.updateStreak(userId, newStreak, streakData.last_reflection_date);
+    }
+
     await Streak.setWatered(userId, date);
-    res.json({ watered: true, date });
+    res.json({ watered: true, date, streak: newStreak });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

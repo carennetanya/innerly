@@ -1395,7 +1395,8 @@ function triggerWatering() {
     hasWateredLocally.value = true
     const todayDate = getTodayKey()
     localStorage.setItem('innerly_watered_date', todayDate)
-    // Save watered date to DB
+    emit('watered')
+    // Save watered date to DB — use server-returned streak as source of truth
     const userId = props.userId;
     if (userId) {
       fetch(`/api/streak/${userId}/water`, {
@@ -1404,24 +1405,30 @@ function triggerWatering() {
         body: JSON.stringify({ date: todayDate })
       })
         .then(res => res.json())
-        .then(data => console.log('[Innerly] Watered saved to DB:', data))
-        .catch(e => console.warn('[Innerly] Could not save watered date:', e));
+        .then(data => {
+          console.log('[Innerly] Watered saved to DB:', data);
+          // Server returns the authoritative streak value
+          const newStreak = typeof data.streak === 'number' ? data.streak : wateredStreak.value;
+          wateredStreak.value = newStreak;
+          // Flower picker only triggered by server-confirmed cycle completion
+          const completesACycle = newStreak % 3 === 0 && newStreak > 0;
+          if (completesACycle) {
+            chosenFlower.value = null;
+            localStorage.removeItem('innerly_chosen_flower');
+            setTimeout(() => { showFlowerPicker.value = true }, 400);
+          }
+        })
+        .catch(e => {
+          console.warn('[Innerly] Could not save watered date:', e);
+          // Fallback: local increment only if server unreachable
+          const prev = wateredStreak.value !== null ? wateredStreak.value : (props.streakDays || 0);
+          wateredStreak.value = prev + 1;
+        });
     } else {
-      console.warn('[Innerly] triggerWatering: userId not found (user not logged in), skipping DB save');
-    }
-    emit('watered')
-    // Update wateredStreak lokal supaya plantStage langsung berubah tanpa reload
-    // wateredStreak bertambah 1 setelah siram
-    const prevStreak = wateredStreak.value !== null ? wateredStreak.value : (props.streakDays || 0)
-    const newStreak = prevStreak + 1
-    wateredStreak.value = newStreak
-
-    // Flower picker muncul kalau newStreak % 3 === 0 (selesai siklus)
-    const completesACycle = newStreak % 3 === 0
-    if (completesACycle) {
-      chosenFlower.value = null
-      localStorage.removeItem('innerly_chosen_flower')
-      setTimeout(() => { showFlowerPicker.value = true }, 400)
+      console.warn('[Innerly] triggerWatering: userId not found, skipping DB save');
+      // Guest fallback
+      const prev = wateredStreak.value !== null ? wateredStreak.value : (props.streakDays || 0);
+      wateredStreak.value = prev + 1;
     }
   }, 1800)
 }
