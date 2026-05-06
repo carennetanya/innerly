@@ -1287,6 +1287,25 @@ watch(() => props.userId, async (newId, oldId) => {
   }
 }, { immediate: false });
 
+// Watch streakDays — setiap kali ada refleksi baru (streakDays naik),
+// reload wateredStreak dari DB supaya plant stage tidak ikut naik.
+// DB streak hanya berubah setelah siram, bukan setelah refleksi.
+watch(() => props.streakDays, async () => {
+  const userId = props.userId;
+  if (!userId) return;
+  try {
+    const res = await fetch(`/api/streak/${userId}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    if (typeof data.streak === 'number') {
+      wateredStreak.value = data.streak;
+      console.log('[Innerly] wateredStreak refreshed after streakDays change:', data.streak);
+    }
+  } catch (e) {
+    console.warn('[Innerly] Failed to refresh wateredStreak:', e);
+  }
+});
+
 // Touch drag state
 let touchOffsetX = 0
 let touchOffsetY = 0
@@ -1464,10 +1483,14 @@ const currentMonthShort = computed(() => {
 // posInCycle = posisi dalam siklus 3-hari: 1=seed, 2=sprout, 3=flower
 
 // Streak dari DB (load via loadUserDataFromDB)
-// Kalau belum load → fallback ke props.streakDays
+// JANGAN fallback ke props.streakDays karena itu naik setiap refleksi,
+// sedangkan plant stage hanya boleh naik setelah SIRAM.
+// Kalau belum load dari DB → pakai 0 (aman, plant stage = dirt/seed awal)
 const effectiveStreak = computed(() => {
   if (wateredStreak.value !== null) return wateredStreak.value
-  return props.streakDays || 0
+  // Belum load dari DB: jangan pakai props.streakDays
+  // Tampilkan dirt sampai data DB tersedia
+  return 0
 })
 
 // Total waterings termasuk hari ini (kalau sudah siram)
