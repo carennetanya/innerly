@@ -3,22 +3,21 @@ import Streak from "../models/Streak.js";
 
 const router = express.Router();
 
-// Init: add last_watered_date column if not exists
 Streak.init().catch(console.error);
 
 // GET /api/streak/:userId
+// Returns: { streak, watered_streak, last_reflection_date, last_watered_date, chosen_flower, collected_flowers }
 router.get("/:userId", async (req, res) => {
   try {
     const { userId } = req.params;
-    const streak = await Streak.getStreak(userId);
-    res.json(streak);
+    const data = await Streak.getStreak(userId);
+    res.json(data);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// POST /api/streak/:userId
-// { today: "2026-04-29" }
+// POST /api/streak/:userId  — update reflection streak
 router.post("/:userId", async (req, res) => {
   try {
     const { userId } = req.params;
@@ -31,7 +30,6 @@ router.post("/:userId", async (req, res) => {
     let newStreak = 1;
 
     if (last_reflection_date) {
-      // Use noon UTC to avoid DST / timezone edge cases in date diff
       const last = new Date(last_reflection_date.toString().split('T')[0] + 'T12:00:00Z');
       const curr = new Date(today.split('T')[0] + 'T12:00:00Z');
       const diff = Math.round((curr - last) / (1000 * 60 * 60 * 24));
@@ -47,31 +45,24 @@ router.post("/:userId", async (req, res) => {
   }
 });
 
-// POST /api/streak/:userId/water
-// { date: "2026-04-29" }
-// NOTE: Streak is managed by the reflection endpoint (POST /:userId).
-// Watering does NOT increment streak — it only records the watered date.
-// The current streak value is returned so the frontend can display plant stage correctly.
+// POST /api/streak/:userId/water  — record today's watering
+// Returns: { watered_streak, wasReset }
+//   watered_streak = posisi dalam siklus saat ini (1, 2, atau 3)
+//   wasReset = true jika user bolos (siklus direset ke 1)
 router.post("/:userId/water", async (req, res) => {
   try {
     const { userId } = req.params;
     const { date } = req.body;
     if (!date) return res.status(400).json({ error: "date is required" });
 
-    await Streak.setWatered(userId, date);
-
-    // Return current streak (unchanged) so frontend can compute plant stage
-    const streakData = await Streak.getStreak(userId);
-    const streak = streakData.streak || 0;
-
-    res.json({ watered: true, date, streak });
+    const { newWateredStreak, wasReset } = await Streak.setWatered(userId, date);
+    res.json({ watered: true, date, watered_streak: newWateredStreak, wasReset });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// POST /api/streak/:userId/flower
-// { flower: "/happy1.png" }
+// POST /api/streak/:userId/flower  — user picked a flower, reset watered cycle
 router.post("/:userId/flower", async (req, res) => {
   try {
     const { userId } = req.params;
@@ -79,6 +70,7 @@ router.post("/:userId/flower", async (req, res) => {
     if (!flower) return res.status(400).json({ error: "flower is required" });
 
     await Streak.setChosenFlower(userId, flower);
+    await Streak.resetWateredCycle(userId);  // reset siklus untuk bunga berikutnya
     res.json({ ok: true, flower });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -97,13 +89,11 @@ router.get("/:userId/collection", async (req, res) => {
 });
 
 // POST /api/streak/:userId/collection
-// { flowers: [...] }
 router.post("/:userId/collection", async (req, res) => {
   try {
     const { userId } = req.params;
     const { flowers } = req.body;
     if (!Array.isArray(flowers)) return res.status(400).json({ error: "flowers must be an array" });
-
     await Streak.saveCollectedFlowers(userId, flowers);
     res.json({ ok: true, count: flowers.length });
   } catch (err) {

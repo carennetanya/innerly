@@ -7,6 +7,7 @@ export default {
         id SERIAL PRIMARY KEY,
         user_id TEXT NOT NULL UNIQUE,
         streak INTEGER DEFAULT 0,
+        watered_streak INTEGER DEFAULT 0,
         last_reflection_date DATE,
         last_watered_date DATE,
         chosen_flower TEXT,
@@ -14,21 +15,24 @@ export default {
         created_at TIMESTAMP DEFAULT NOW()
       )
     `);
-    // Add columns if upgrading from old schema
-    await pool.query(`
-      ALTER TABLE user_streaks ADD COLUMN IF NOT EXISTS chosen_flower TEXT
-    `).catch(() => {});
-    await pool.query(`
-      ALTER TABLE user_streaks ADD COLUMN IF NOT EXISTS collected_flowers JSONB DEFAULT '[]'
-    `).catch(() => {});
+    await pool.query(`ALTER TABLE user_streaks ADD COLUMN IF NOT EXISTS chosen_flower TEXT`).catch(() => {});
+    await pool.query(`ALTER TABLE user_streaks ADD COLUMN IF NOT EXISTS collected_flowers JSONB DEFAULT '[]'`).catch(() => {});
+    await pool.query(`ALTER TABLE user_streaks ADD COLUMN IF NOT EXISTS watered_streak INTEGER DEFAULT 0`).catch(() => {});
   },
 
   async getStreak(userId) {
     const result = await pool.query(
-      `SELECT streak, last_reflection_date, last_watered_date, chosen_flower, collected_flowers FROM user_streaks WHERE user_id = $1`,
+      `SELECT streak, watered_streak, last_reflection_date, last_watered_date, chosen_flower, collected_flowers FROM user_streaks WHERE user_id = $1`,
       [userId]
     );
-    return result.rows[0] || { streak: 0, last_reflection_date: null, last_watered_date: null, chosen_flower: null, collected_flowers: [] };
+    return result.rows[0] || {
+      streak: 0,
+      watered_streak: 0,
+      last_reflection_date: null,
+      last_watered_date: null,
+      chosen_flower: null,
+      collected_flowers: []
+    };
   },
 
   async updateStreak(userId, streak, lastReflectionDate) {
@@ -41,13 +45,56 @@ export default {
     );
   },
 
+  // Returns { newWateredStreak, wasReset }
+  // wasReset = true jika user bolos (gap > 1 hari) → siklus mulai dari 1
   async setWatered(userId, date) {
+    const current = await this.getStreak(userId);
+    const lastWateredStr = current.last_watered_date
+      ? current.last_watered_date.toString().split('T')[0]
+      : null;
+    const todayStr = date.split('T')[0];
+
+    let currentWateredStreak = current.watered_streak || 0;
+    let newWateredStreak;
+    let wasReset = false;
+
+    if (lastWateredStr === todayStr) {
+      // Already watered today — idempotent, no change
+      newWateredStreak = currentWateredStreak;
+    } else if (!lastWateredStr) {
+      // First time ever watering
+      newWateredStreak = 1;
+    } else {
+      const last = new Date(lastWateredStr + 'T12:00:00Z');
+      const curr = new Date(todayStr + 'T12:00:00Z');
+      const diff = Math.round((curr - last) / (1000 * 60 * 60 * 24));
+
+      if (diff === 1) {
+        // Consecutive day — continue the cycle
+        newWateredStreak = currentWateredStreak + 1;
+      } else {
+        // Gap detected (bolos) — reset cycle to 1
+        newWateredStreak = 1;
+        wasReset = true;
+      }
+    }
+
     await pool.query(
-      `INSERT INTO user_streaks (user_id, last_watered_date)
-       VALUES ($1, $2)
+      `INSERT INTO user_streaks (user_id, last_watered_date, watered_streak)
+       VALUES ($1, $2, $3)
        ON CONFLICT (user_id)
-       DO UPDATE SET last_watered_date = $2`,
-      [userId, date]
+       DO UPDATE SET last_watered_date = $2, watered_streak = $3`,
+      [userId, date, newWateredStreak]
+    );
+
+    return { newWateredStreak, wasReset };
+  },
+
+  // Called when user picks a flower — resets the watered cycle to 0
+  async resetWateredCycle(userId) {
+    await pool.query(
+      `UPDATE user_streaks SET watered_streak = 0 WHERE user_id = $1`,
+      [userId]
     );
   },
 

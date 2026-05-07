@@ -232,7 +232,7 @@
         <div v-if="showCollectionBubble && collectedFlowers.length > 0" class="kb-fab-chat-bubble kb-collection-bubble" key="collection" @click.stop="openCollectionPopup">
           <span class="kb-fab-chat-text">🌸 {{ lang === 'id' ? 'Koleksi bungamu!' : 'Your flower collection!' }}</span>
         </div>
-        <div v-else-if="!props.justRegistered && (!props.hasReflectionToday || (props.hasReflectionToday && !hasWateredLocally))" class="kb-fab-chat-bubble" key="hint">
+        <div v-else-if="!props.hasReflectionToday || (props.hasReflectionToday && !hasWateredLocally)" class="kb-fab-chat-bubble" key="hint">
           <span class="kb-fab-chat-text">
             {{ lang === 'id'
               ? (!props.hasReflectionToday ? 'Kamu belum isi refleksi hari ini loh!' : 'Jangan lupa siram tanamanmu hari ini!')
@@ -385,6 +385,15 @@
           <Transition name="toast-up">
             <div v-if="showReflectionToast" class="kb-reflection-toast">
               📝 {{ lang === 'id' ? 'Silakan buat refleksi untuk hari ini dulu, baru bisa menyiram!' : 'Please make a reflection for today first, then you can water!' }}
+            </div>
+          </Transition>
+
+          <!-- Toast: streak reset karena bolos -->
+          <Transition name="toast-up">
+            <div v-if="showStreakResetToast_ref" class="kb-streak-reset-toast">
+              💔 {{ lang === 'id'
+                ? 'Sayang, kamu bolos kemarin. Siklus tanamanmu mulai dari awal lagi!'
+                : 'You missed a day! Your plant cycle restarted from the beginning.' }}
             </div>
           </Transition>
 
@@ -1008,6 +1017,7 @@ const plantAreaRef = ref(null)
 // Toast for "come back tomorrow"
 const showToast = ref(false)
 const showReflectionToast = ref(false)
+const showStreakResetToast_ref = ref(false)
 let toastTimer = null
 
 function showComeBackToast() {
@@ -1020,6 +1030,12 @@ function showReflectionRequiredToast() {
   showReflectionToast.value = true
   if (toastTimer) clearTimeout(toastTimer)
   toastTimer = setTimeout(() => { showReflectionToast.value = false }, 3500)
+}
+
+function showStreakResetToast() {
+  showStreakResetToast_ref.value = true
+  if (toastTimer) clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => { showStreakResetToast_ref.value = false }, 3500)
 }
 
 // Watered state persisted to DB + localStorage
@@ -1189,22 +1205,8 @@ function confirmFlower() {
     setTimeout(() => triggerCollectionBubble(), 2200)
   }
 
-  // Reset plant to dirt after this cycle — clear chosen flower setelah 3.5 detik
-  setTimeout(() => {
-    chosenFlower.value = null
-    localStorage.removeItem('innerly_chosen_flower')
-    // Clear dari DB juga supaya siklus berikutnya picker muncul lagi
-    const userId = props.userId
-    if (userId) {
-      fetch(`/api/streak/${userId}/flower`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ flower: null })
-      }).catch(() => {})
-    }
-  }, 3500)
-
-  // Simpan chosen flower ke DB supaya persist across login
+  // Simpan chosen flower ke DB — server juga reset watered_streak ke 0 di sini
+  // sehingga siklus berikutnya mulai fresh (siram ke-1 lagi)
   const userId = props.userId
   if (userId) {
     fetch(`/api/streak/${userId}/flower`, {
@@ -1213,10 +1215,30 @@ function confirmFlower() {
       body: JSON.stringify({ flower: pickedImg })
     })
       .then(res => res.json())
-      .then(data => console.log('[Innerly] Flower saved to DB:', data))
+      .then(data => {
+        console.log('[Innerly] Flower saved to DB, cycle reset:', data)
+        // Reset wateredStreak lokal supaya totalWaterings = 0 → dirt
+        // (Server sudah reset watered_streak ke 0)
+        wateredStreak.value = 0
+        hasWateredLocally.value = false
+        localStorage.removeItem('innerly_watered_date')
+        // Setelah animasi bunga selesai, reset chosen flower supaya tampil dirt
+        setTimeout(() => {
+          chosenFlower.value = null
+          localStorage.removeItem('innerly_chosen_flower')
+        }, 3500)
+      })
       .catch(e => console.error('[Innerly] FAILED to save flower to DB:', e))
   } else {
     console.warn('[Innerly] confirmFlower: userId is null, cannot save to DB.')
+    // Guest fallback: reset lokal saja
+    wateredStreak.value = 0
+    hasWateredLocally.value = false
+    localStorage.removeItem('innerly_watered_date')
+    setTimeout(() => {
+      chosenFlower.value = null
+      localStorage.removeItem('innerly_chosen_flower')
+    }, 3500)
   }
   tempFlower.value = null
 }
@@ -1243,26 +1265,26 @@ async function loadUserDataFromDB(userId) {
     const data = await res.json();
     console.log('[Innerly] Loaded streak data from DB:', data);
 
-    // wateredStreak: streak dari DB (hanya naik setelah siram)
-    if (typeof data.streak === 'number') {
-      wateredStreak.value = data.streak;
-    }
-
-    // hasWateredLocally: cek last_watered_date dari DB
-    // DB is source of truth — jika DB bilang sudah siram hari ini, sync ke semua device
+    // Cek dulu apakah sudah siram hari ini
     const todayKey = getTodayKey();
-    if (data.last_watered_date) {
-      const watered = data.last_watered_date.toString().split('T')[0];
-      if (watered === todayKey) {
-        hasWateredLocally.value = true;
-        localStorage.setItem('innerly_watered_date', todayKey);
-      } else {
-        // DB bilang belum siram hari ini — reset state lokal
-        hasWateredLocally.value = false;
-        localStorage.removeItem('innerly_watered_date');
-      }
+    const wateredToday = data.last_watered_date
+      ? data.last_watered_date.toString().split('T')[0] === todayKey
+      : false;
+
+    // watered_streak di DB = total siram dalam siklus ini, TERMASUK hari ini jika sudah siram.
+    // totalWaterings (computed) = wateredStreak (ref) + hasWateredLocally (0 or 1)
+    // Supaya tidak double-count: simpan (data.watered_streak - 1) kalau wateredToday=true,
+    // karena hasWateredLocally=true akan menambah 1 lagi via computed.
+    if (typeof data.watered_streak === 'number') {
+      wateredStreak.value = wateredToday ? data.watered_streak - 1 : data.watered_streak;
+    }
+    // Kalau field belum ada (user lama, belum migration) → biarkan null → dirt (aman)
+
+    // Sync hasWateredLocally dari DB (source of truth untuk cross-device)
+    if (wateredToday) {
+      hasWateredLocally.value = true;
+      localStorage.setItem('innerly_watered_date', todayKey);
     } else {
-      // Belum pernah siram sama sekali
       hasWateredLocally.value = false;
       localStorage.removeItem('innerly_watered_date');
     }
@@ -1432,14 +1454,20 @@ function triggerWatering() {
         .then(res => res.json())
         .then(data => {
           console.log('[Innerly] Watered saved to DB:', data);
-          // Server returns streak from DB (does NOT include today's watering)
-          // hasWateredLocally is already true, so totalWaterings = streak + 1 via computed
-          const dbStreak = typeof data.streak === 'number' ? data.streak : wateredStreak.value;
-          wateredStreak.value = dbStreak;
-          // Flower picker: total waterings (streak + 1 for today) completes a cycle
-          const total = dbStreak + 1;
-          const completesACycle = total % 3 === 0 && total > 0;
-          if (completesACycle) {
+          // data.watered_streak = posisi dalam siklus setelah siram hari ini (1, 2, atau 3)
+          // data.wasReset = true jika user bolos (gap > 1 hari), siklus direset ke 1
+          // hasWateredLocally sudah = true, jadi kita set wateredStreak = watered_streak - 1
+          // agar totalWaterings computed = (watered_streak - 1) + 1 = watered_streak (benar)
+          const ws = typeof data.watered_streak === 'number' ? data.watered_streak : (wateredStreak.value ?? 0) + 1;
+          wateredStreak.value = ws - 1; // -1 karena hasWateredLocally=true sudah +1 via computed
+
+          // Tampilkan toast jika bolos (siklus direset)
+          if (data.wasReset) {
+            showStreakResetToast()
+          }
+
+          // Flower picker muncul saat siram ke-3 dalam siklus (ws == 3)
+          if (ws === 3) {
             chosenFlower.value = null;
             localStorage.removeItem('innerly_chosen_flower');
             setTimeout(() => { showFlowerPicker.value = true }, 400);
@@ -3160,6 +3188,18 @@ function closeReflectionWarning() {
   text-align: center;
   box-shadow: 0 4px 16px rgba(245,166,166,0.3);
   margin-top: -6px;
+}
+.kb-streak-reset-toast {
+  background: #fff3e0;
+  border: 1.5px solid #ffb74d;
+  color: #7a4100;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 10px 16px;
+  border-radius: 14px;
+  text-align: center;
+  margin-top: 8px;
+  box-shadow: 0 2px 8px rgba(255,183,77,0.15);
 }
 
 /* No reflection banner */
