@@ -280,6 +280,8 @@ function validateEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
 async function handleSubmit() {
   error.value = '';
   if (!form.name.trim()) { error.value = 'Please tell us your name.'; return; }
@@ -287,9 +289,25 @@ async function handleSubmit() {
   if (!form.message.trim()) { error.value = 'A message would help us help you.'; return; }
 
   sending.value = true;
-  await new Promise(r => setTimeout(r, 1400));
-  sending.value = false;
-  sent.value = true;
+  try {
+    const res = await fetch(`${API_BASE}/api/contact`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: form.name.trim(),
+        email: form.email.trim(),
+        topic: form.topic,
+        message: form.message.trim(),
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to send message.');
+    sent.value = true;
+  } catch (err) {
+    error.value = err.message || 'Something went wrong. Please try again.';
+  } finally {
+    sending.value = false;
+  }
 }
 
 function resetForm() {
