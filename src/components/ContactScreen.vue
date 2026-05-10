@@ -48,16 +48,16 @@
                 @mouseenter="hoveredMember = member.name"
                 @mouseleave="hoveredMember = null"
               >
-                <!-- Chat bubble on hover -->
-                <Transition name="bubble">
-                  <div v-if="hoveredMember === member.name" class="chat-bubble">
-                    <p class="bubble-text">{{ member.intro }}</p>
-                    <div class="bubble-tail"></div>
-                  </div>
-                </Transition>
-
                 <!-- Avatar -->
                 <div class="avatar-wrap">
+                  <!-- Chat bubble on hover (desktop only) -->
+                  <Transition name="bubble">
+                    <div v-if="hoveredMember === member.name" class="chat-bubble">
+                      <p class="bubble-text">{{ member.intro }}</p>
+                      <div class="bubble-tail"></div>
+                    </div>
+                  </Transition>
+
                   <img
                     :src="member.photo"
                     :alt="member.name"
@@ -73,6 +73,9 @@
                   <h3 class="member-name">{{ member.name }}</h3>
                   <p class="member-role">{{ member.role }}</p>
                 </div>
+
+                <!-- Intro text (mobile only, static) -->
+                <p class="member-intro-mobile">{{ member.intro }}</p>
 
                 <!-- Links -->
                 <div class="member-links">
@@ -506,7 +509,7 @@ function resetForm() {
 /* ─── Chat Bubble ─────────────────────────────────────────── */
 .chat-bubble {
   position: absolute;
-  bottom: calc(100% + 12px);
+  bottom: calc(100% + 16px);
   left: 50%;
   transform: translateX(-50%);
   width: 220px;
@@ -518,7 +521,7 @@ function resetForm() {
   border-bottom-left-radius: 6px;
   padding: 12px 14px;
   box-shadow: 0 8px 32px rgba(108,88,185,0.18), 0 2px 8px rgba(108,88,185,0.1);
-  z-index: 20;
+  z-index: 100;
   pointer-events: none;
 }
 .dark-mode .chat-bubble {
@@ -574,6 +577,7 @@ function resetForm() {
   position: relative;
   width: 72px; height: 72px;
   flex-shrink: 0;
+  overflow: visible;
 }
 .avatar-img {
   width: 72px; height: 72px;
@@ -884,6 +888,27 @@ function resetForm() {
 }
 .dark-mode .contact-footer-note { color: rgba(167,139,250,0.38); }
 
+/* ─── Mobile intro (static, replaces hover bubble) ─── */
+.member-intro-mobile {
+  display: none;
+}
+
+@media (hover: none), (max-width: 600px) {
+  .chat-bubble { display: none !important; }
+  .member-intro-mobile {
+    display: block;
+    font-family: "Outfit", sans-serif;
+    font-size: 0.74rem;
+    font-weight: 400;
+    line-height: 1.6;
+    color: rgba(74,63,122,0.75);
+    text-align: center;
+    margin: 0;
+    padding: 0 4px;
+  }
+  .dark-mode .member-intro-mobile { color: rgba(200,190,255,0.7); }
+}
+
 /* ─── Transition ─── */
 .page-slide-enter-active,
 .page-slide-leave-active {
@@ -894,6 +919,5 @@ function resetForm() {
 
 @media (max-width: 380px) {
   .team-grid { grid-template-columns: 1fr; }
-  .chat-bubble { width: 200px; }
 }
 </style>
