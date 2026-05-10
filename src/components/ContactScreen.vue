@@ -89,66 +89,24 @@
                     </svg>
                     <span>GitHub</span>
                   </a>
-                  <a
-                    :href="'mailto:' + member.email"
+                  <button
                     class="link-btn"
-                    :class="{ 'is-dark': isDark }"
-                    title="Email"
+                    :class="{ 'is-dark': isDark, 'copied': copiedMember === member.name }"
+                    @click="copyEmail(member)"
+                    title="Copy email"
                   >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                    <svg v-if="copiedMember !== member.name" width="16" height="16" viewBox="0 0 24 24" fill="none">
                       <rect x="2" y="5" width="20" height="14" rx="3" stroke="currentColor" stroke-width="1.5"/>
                       <path d="M2 8l10 7 10-7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
                     </svg>
-                    <span>Email</span>
-                  </a>
+                    <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none">
+                      <path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span>{{ copiedMember === member.name ? 'Copied!' : 'Email' }}</span>
+                  </button>
                 </div>
               </div>
             </div>
-          </div>
-
-          <!-- Contact channels -->
-          <div class="channels-section">
-            <a href="mailto:hello@innerly.app" class="channel-card" target="_blank" rel="noopener">
-              <div class="channel-icon-wrap">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                  <rect x="2" y="5" width="20" height="14" rx="3" stroke="currentColor" stroke-width="1.5"/>
-                  <path d="M2 8l10 7 10-7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                </svg>
-              </div>
-              <div class="channel-info">
-                <span class="channel-label">Email Us</span>
-                <span class="channel-value">hello@innerly.app</span>
-              </div>
-              <div class="channel-arrow">→</div>
-            </a>
-
-            <a href="https://instagram.com/innerly.app" class="channel-card" target="_blank" rel="noopener">
-              <div class="channel-icon-wrap">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                  <rect x="2" y="2" width="20" height="20" rx="6" stroke="currentColor" stroke-width="1.5"/>
-                  <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.5"/>
-                  <circle cx="17.5" cy="6.5" r="1.2" fill="currentColor"/>
-                </svg>
-              </div>
-              <div class="channel-info">
-                <span class="channel-label">Instagram</span>
-                <span class="channel-value">@innerly.app</span>
-              </div>
-              <div class="channel-arrow">→</div>
-            </a>
-
-            <a href="https://twitter.com/innerlyapp" class="channel-card" target="_blank" rel="noopener">
-              <div class="channel-icon-wrap">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                  <path d="M3 20L20.5 4M4 4h4l12 16h-4L4 4z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-              </div>
-              <div class="channel-info">
-                <span class="channel-label">Twitter / X</span>
-                <span class="channel-value">@innerlyapp</span>
-              </div>
-              <div class="channel-arrow">→</div>
-            </a>
           </div>
 
           <!-- Message form -->
@@ -241,7 +199,7 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue';
+import { ref, reactive, computed } from 'vue';
 
 const props = defineProps({
   isDark: { type: Boolean, default: false }
@@ -253,35 +211,43 @@ const sent = ref(false);
 const sending = ref(false);
 const error = ref('');
 const hoveredMember = ref(null);
+const copiedMember = ref(null);
+
+function copyEmail(member) {
+  navigator.clipboard.writeText(member.email).then(() => {
+    copiedMember.value = member.name;
+    setTimeout(() => { copiedMember.value = null; }, 2000);
+  });
+}
 
 const topics = ['feedback', 'bug report', 'feature request', 'other'];
 
-const team = [
+const team = computed(() => [
   {
     name: 'Caren',
-    role: 'UI/UX · Frontend · AI Dev',
-    photo: '/caren.png',
-    github: 'https://github.com/',
-    email: 'caren@innerly.app',
+    role: 'UI/UX · Frontend · AI Dev · Backend',
+    photo: props.isDark ? '/caren1.png' : '/caren.png',
+    github: 'https://github.com/carennetanya',
+    email: 'netanya.caren@gmail.com',
     intro: "Hi! I'm Caren 👋 I shape how Innerly looks and feels — from UI/UX design to building the frontend, AI features, and backend too. If it's beautiful and it works, I probably touched it ✦",
   },
   {
     name: 'Rafa',
     role: 'Frontend · Backend',
-    photo: '/rafa.png',
-    github: 'https://github.com/',
-    email: 'rafa@innerly.app',
+    photo: props.isDark ? '/rafa1.png' : '/rafa.png',
+    github: 'https://github.com/rafanih',
+    email: 'rafael.julio0807@gmail.com',
     intro: "Hey, I'm Rafa 🙌 I work across the stack — crafting the frontend experience and making sure the backend runs smoothly. Caren and I keep the engine humming together.",
   },
   {
     name: 'Daniel',
     role: 'Concept · Content · Backend',
-    photo: '/daniel.png',
-    github: 'https://github.com/',
-    email: 'daniel@innerly.app',
+    photo: props.isDark ? '/daniel1.png' : '/daniel.png',
+    github: 'https://github.com/rhezadaniel7',
+    email: 'antoniusdaniel486@gmail.com',
     intro: "I'm Daniel 💡 Innerly started as my idea — I shape the concept, write and curate the content, and help fix the backend logic. The soul of this app is something I care a lot about.",
   },
-];
+]);
 
 function handleImgError(event, name) {
   // Fallback: generate initials avatar via canvas data URL
@@ -707,71 +673,16 @@ function resetForm() {
   border-color: rgba(167,139,250,0.2);
   color: rgba(167,139,250,0.65);
 }
-.link-btn.is-dark:hover {
-  background: rgba(167,139,250,0.12);
-  border-color: rgba(167,139,250,0.45);
-  color: rgba(210,200,255,0.95);
+.link-btn.copied {
+  background: rgba(108,88,185,0.12);
+  border-color: rgba(108,88,185,0.45);
+  color: rgba(74,63,122,0.95);
 }
-
-/* ─── Channels ────────────────────────────────────────────── */
-.channels-section { display: flex; flex-direction: column; gap: 10px; }
-.channel-card {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 14px 18px;
-  background: rgba(255,255,255,0.38);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255,255,255,0.55);
-  border-radius: 18px;
-  text-decoration: none;
-  box-shadow: 0 2px 12px rgba(108,88,185,0.07), inset 0 1px 0 rgba(255,255,255,0.6);
-  transition: all 0.22s ease;
+.link-btn.is-dark.copied {
+  background: rgba(167,139,250,0.18);
+  border-color: rgba(167,139,250,0.55);
+  color: rgba(210,200,255,1);
 }
-.channel-card:hover {
-  background: rgba(255,255,255,0.55);
-  transform: translateX(4px);
-  box-shadow: 0 4px 20px rgba(108,88,185,0.13), inset 0 1px 0 rgba(255,255,255,0.7);
-}
-.dark-mode .channel-card {
-  background: rgba(20,14,40,0.45);
-  border-color: rgba(167,139,250,0.13);
-}
-.dark-mode .channel-card:hover { background: rgba(30,20,55,0.6); }
-.channel-icon-wrap {
-  width: 40px; height: 40px;
-  border-radius: 12px;
-  background: rgba(124,108,168,0.1);
-  display: flex; align-items: center; justify-content: center;
-  color: rgba(74,63,122,0.75);
-  flex-shrink: 0;
-}
-.dark-mode .channel-icon-wrap {
-  background: rgba(167,139,250,0.1);
-  color: rgba(167,139,250,0.7);
-}
-.channel-info { flex: 1; display: flex; flex-direction: column; gap: 2px; }
-.channel-label {
-  font-family: "Outfit", sans-serif;
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: rgba(40,28,70,0.85);
-}
-.dark-mode .channel-label { color: rgba(220,210,255,0.85); }
-.channel-value {
-  font-family: "Outfit", sans-serif;
-  font-size: 0.72rem;
-  color: rgba(74,63,122,0.55);
-}
-.dark-mode .channel-value { color: rgba(167,139,250,0.5); }
-.channel-arrow {
-  font-size: 1.1rem;
-  color: rgba(124,108,168,0.45);
-  transition: transform 0.2s ease;
-}
-.channel-card:hover .channel-arrow { transform: translateX(3px); }
-.dark-mode .channel-arrow { color: rgba(167,139,250,0.4); }
 
 /* ─── Form card ───────────────────────────────────────────── */
 .form-card {
@@ -955,7 +866,7 @@ function resetForm() {
 }
 .dark-mode .contact-footer-note { color: rgba(167,139,250,0.38); }
 
-/* ─── Transition ──────────────────────────────────────────── */
+/* ─── Transition ─── */
 .page-slide-enter-active,
 .page-slide-leave-active {
   transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
@@ -963,7 +874,6 @@ function resetForm() {
 .page-slide-enter-from { opacity: 0; transform: translateY(20px); }
 .page-slide-leave-to { opacity: 0; transform: translateY(-12px); }
 
-/* ─── Responsive ──────────────────────────────────────────── */
 @media (max-width: 380px) {
   .team-grid { grid-template-columns: 1fr; }
   .chat-bubble { width: 200px; }
