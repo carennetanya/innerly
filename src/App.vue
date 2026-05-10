@@ -16,6 +16,8 @@
         :audio-el="globalAudio"
         @done="onLoadingDone"
         @show-login="onShowLoginFromLoading"
+        @show-about="(dark) => { isDark = dark; showAboutScreen = true }"
+        @show-contact="(dark) => { isDark = dark; showContactScreen = true }"
       />
       <GreetingScreen
         v-else-if="stage === 'greeting'"
@@ -88,6 +90,18 @@
       @close="showAuthModal = false"
       @success="onAuthSuccess"
     />
+
+    <!-- About & Contact overlays -->
+    <AboutScreen
+      v-if="showAboutScreen"
+      :is-dark="isDark"
+      @close="showAboutScreen = false"
+    />
+    <ContactScreen
+      v-if="showContactScreen"
+      :is-dark="isDark"
+      @close="showContactScreen = false"
+    />
   </div>
 </template>
 
@@ -102,6 +116,8 @@ import EvaluationScreen from "./components/EvaluationScreen.vue";
 import ActionPlanScreen from "./components/ActionPlanScreen.vue";
 import SummaryScreen from "./components/SummaryScreen.vue";
 import AuthModal from "./components/AuthModal.vue";
+import AboutScreen from "./components/AboutScreen.vue";
+import ContactScreen from "./components/ContactScreen.vue";
 import { authService } from "./services/auth.js";
 import { reflectionService } from "./services/reflection.js";
 
@@ -119,7 +135,9 @@ const nameModalRef = ref(null);
 const curtainVisible = ref(false);
 const lang = ref("en"); // default english, will be set by GreetingScreen
 const showAuthModal = ref(false);
-const authModalMode = ref("register"); // 'register' or 'login'
+const authModalMode = ref("register");
+const showAboutScreen = ref(false);
+const showContactScreen = ref(false);
 const pendingReflection = ref(null); // refleksi onboarding yang belum tersimpan ke dashboard
 const dbReloadTrigger = ref(0); // increment to force DashboardView reload from DB
 

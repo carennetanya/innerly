@@ -126,6 +126,31 @@
           </div>
         </Transition>
 
+        <!-- About & Contact links -->
+        <Transition name="skip-fade">
+          <div v-if="phase >= 6" class="ls-footer-links">
+            <button class="ls-footer-btn" :class="{ 'is-dark': isDark }" @click="$emit('show-about', isDark)">
+              <span class="ls-footer-btn-inner">
+                <svg width="12" height="12" viewBox="0 0 20 20" fill="none">
+                  <circle cx="10" cy="10" r="8.5" stroke="currentColor" stroke-width="1.5"/>
+                  <path d="M10 9v6M10 6.5v.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                </svg>
+                About Us
+              </span>
+            </button>
+            <span class="ls-footer-sep" :class="{ 'is-dark': isDark }">·</span>
+            <button class="ls-footer-btn" :class="{ 'is-dark': isDark }" @click="$emit('show-contact', isDark)">
+              <span class="ls-footer-btn-inner">
+                <svg width="12" height="12" viewBox="0 0 20 20" fill="none">
+                  <rect x="2" y="5" width="16" height="11" rx="2.5" stroke="currentColor" stroke-width="1.5"/>
+                  <path d="M2 7.5l8 5 8-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+                Contact Us
+              </span>
+            </button>
+          </div>
+        </Transition>
+
       </div>
 
       <!-- ══ CD PLAYER ══ -->
@@ -209,7 +234,7 @@ import { authService } from "../services/auth.js";
 import { commitmentService } from "../services/commitment.js";
 
 const props = defineProps({ audioEl: Object });
-const emit = defineEmits(["done", "show-login"]);
+const emit = defineEmits(["done", "show-login", "show-about", "show-contact"]);
 const phase = ref(0);
 
 // Tomorrow's committed reminder
@@ -1849,5 +1874,60 @@ onMounted(async () => {
 }
 .ls-login-btn strong {
   font-weight: 700;
+}
+
+/* About & Contact footer links */
+.ls-footer-links {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 16px;
+}
+.ls-footer-sep {
+  font-size: 0.75rem;
+  color: rgba(74, 63, 122, 0.35);
+  line-height: 1;
+  user-select: none;
+}
+.ls-footer-sep.is-dark {
+  color: rgba(167, 139, 250, 0.3);
+}
+.ls-footer-btn {
+  background: transparent;
+  border: 1px solid rgba(74, 63, 122, 0.18);
+  border-radius: 20px;
+  padding: 5px 13px;
+  font-family: "Outfit", sans-serif;
+  font-size: 0.74rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  color: rgba(74, 63, 122, 0.7);
+  cursor: pointer;
+  transition: all 0.22s ease;
+  display: flex;
+  align-items: center;
+}
+.ls-footer-btn-inner {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.ls-footer-btn:hover {
+  background: rgba(124, 108, 168, 0.1);
+  border-color: rgba(74, 63, 122, 0.38);
+  color: rgba(74, 63, 122, 1);
+  transform: translateY(-1px);
+}
+.ls-footer-btn:active {
+  transform: translateY(0);
+}
+.ls-footer-btn.is-dark {
+  border-color: rgba(167, 139, 250, 0.2);
+  color: rgba(200, 190, 255, 0.65);
+}
+.ls-footer-btn.is-dark:hover {
+  background: rgba(167, 139, 250, 0.12);
+  border-color: rgba(167, 139, 250, 0.42);
+  color: rgba(220, 210, 255, 0.95);
 }
 </style>
