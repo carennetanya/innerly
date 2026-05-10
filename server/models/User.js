@@ -6,15 +6,17 @@ export default {
     const values = Object.values(query);
     const conditions = keys.map((k, i) => `${k} = $${i + 1}`).join(" AND ");
     const result = await pool.query(
-      `SELECT * FROM users WHERE ${conditions} LIMIT 1`,
+      `SELECT * FROM innerly.users WHERE ${conditions} LIMIT 1`,
       values,
     );
-    return result.rows[0] || null;
+    const user = result.rows[0] || null;
+    if (user) user._id = user.id;
+    return user;
   },
 
   async create(data) {
     const result = await pool.query(
-      `INSERT INTO users (name, username, email, password)
+      `INSERT INTO innerly.users (name, username, email, password)
        VALUES ($1, $2, $3, $4)
        RETURNING id, name, username, email, created_at`,
       [data.name, data.username, data.email, data.password],

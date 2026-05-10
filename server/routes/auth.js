@@ -2,6 +2,7 @@ import express from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
+import pool from "../db.js";
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || "innerly-secret-key-2024";
@@ -86,6 +87,56 @@ router.post("/login", async (req, res) => {
     });
   } catch (error) {
     console.error("Login error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// Helper: extract userId from Bearer token
+function getUserIdFromReq(req) {
+  const auth = req.headers.authorization;
+  if (!auth || !auth.startsWith("Bearer ")) return null;
+  try {
+    const decoded = jwt.verify(auth.slice(7), JWT_SECRET);
+    return decoded.userId;
+  } catch {
+    return null;
+  }
+}
+
+// PATCH /api/auth/email
+router.patch("/email", async (req, res) => {
+  try {
+    const userId = getUserIdFromReq(req);
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ message: "Email required" });
+    const dup = await pool.query(
+      "SELECT id FROM innerly.users WHERE email = $1 AND id != $2",
+      [email, userId]
+    );
+    if (dup.rows.length > 0) return res.status(409).json({ message: "Email already in use" });
+    await pool.query("UPDATE innerly.users SET email = $1, updated_at = NOW() WHERE id = $2", [email, userId]);
+    res.json({ success: true, email });
+  } catch (err) {
+    console.error("Update email error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// PATCH /api/auth/password
+router.patch("/password", async (req, res) => {
+  try {
+    const userId = getUserIdFromReq(req);
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    const { password } = req.body;
+    if (!password || password.length < 6) {
+      return res.status(400).json({ message: "Password must be at least 6 characters" });
+    }
+    const hashed = await bcrypt.hash(password, 10);
+    await pool.query("UPDATE innerly.users SET password = $1, updated_at = NOW() WHERE id = $2", [hashed, userId]);
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Update password error:", err);
     res.status(500).json({ message: "Server error" });
   }
 });

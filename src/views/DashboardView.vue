@@ -53,9 +53,9 @@
             <button class="kb-profile-change-btn" @click="topbarShowEmail = !topbarShowEmail">
               {{ topbarShowEmail ? 'Cancel' : 'Change Email' }}
             </button>
-            <div class="kb-profile-edit-row" v-if="topbarShowEmail">
+            <div class="kb-profile-edit-row" v-if="topbarShowEmail" style="flex-direction:column;gap:0;align-items:stretch;">
               <input class="kb-profile-input" v-model="topbarNewEmail" type="email" placeholder="New email address" />
-              <button class="kb-profile-save-btn" @click="saveTopbarEmail">Save</button>
+              <button class="kb-profile-save-btn" @click="saveTopbarEmail" style="margin-top:10px;">Save</button>
             </div>
           </div>
           <div class="kb-profile-divider"></div>
@@ -155,6 +155,7 @@ import GuidedJournal from "../components/GuidedJournal.vue";
 import GardenView from "../components/GardenView.vue";
 import { reflectionService } from "../services/reflection.js";
 import { authService } from "../services/auth.js";
+const BASE = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
 const props = defineProps({
   isDark: Boolean,
@@ -210,17 +211,48 @@ const topbarNewPw = ref('')
 const topbarConfirmPw = ref('')
 const topbarPwError = ref('')
 
-function saveTopbarEmail() {
-  if (topbarNewEmail.value) {
+async function saveTopbarEmail() {
+  console.log('[DEBUG] saveTopbarEmail called, email value:', topbarNewEmail.value)
+  if (!topbarNewEmail.value) {
+    alert('Email kosong, isi dulu')
+    return
+  }
+  try {
+    const result = await authService.updateEmail(topbarNewEmail.value)
+    console.log('[DEBUG] Update email success:', result)
     topbarEmail.value = topbarNewEmail.value
+    const user = authService.getUser()
+    if (user) { user.email = topbarNewEmail.value; authService.saveUser(user) }
     topbarNewEmail.value = ''
     topbarShowEmail.value = false
+    alert('Email berhasil diupdate!')
+  } catch (err) {
+    console.error('[DEBUG] Update email error:', err)
+    alert('Gagal update email: ' + (err.message || 'unknown error'))
   }
 }
-function saveTopbarPassword() {
-  if (!topbarNewPw.value || !topbarConfirmPw.value) { topbarPwError.value = 'Password cannot be empty.'; return }
-  if (topbarNewPw.value !== topbarConfirmPw.value) { topbarPwError.value = 'Passwords do not match.'; return }
-  topbarNewPw.value = ''; topbarConfirmPw.value = ''; topbarPwError.value = ''; topbarShowPw.value = false
+async function saveTopbarPassword() {
+  console.log('[DEBUG] saveTopbarPassword called')
+  if (!topbarNewPw.value || !topbarConfirmPw.value) {
+    topbarPwError.value = 'Password tidak boleh kosong'
+    return
+  }
+  if (topbarNewPw.value !== topbarConfirmPw.value) {
+    topbarPwError.value = 'Password tidak cocok'
+    return
+  }
+  try {
+    const result = await authService.updatePassword(topbarNewPw.value)
+    console.log('[DEBUG] Password update success:', result)
+    topbarNewPw.value = ''
+    topbarConfirmPw.value = ''
+    topbarPwError.value = ''
+    topbarShowPw.value = false
+    alert('Password berhasil diupdate!')
+  } catch (err) {
+    console.error('[DEBUG] Password update error:', err)
+    topbarPwError.value = err.message || 'Gagal update password'
+  }
 }
 function handleTopbarOutsideClick(e) {
   if (topbarProfileOpen.value &&
@@ -394,19 +426,7 @@ watch(() => props.dbReloadTrigger, async (newVal) => {
         }
       }
       reflections.value = merged;
-
-      // Use DB streak as source of truth to avoid timezone bugs in computeStreak
-      try {
-        const streakRes = await fetch(`/api/streak/${userId}`);
-        const streakData = await streakRes.json();
-        if (streakData && typeof streakData.streak === 'number' && streakData.streak > 0) {
-          streakDays.value = streakData.streak;
-        } else {
-          streakDays.value = computeStreak(merged);
-        }
-      } catch {
-        streakDays.value = computeStreak(merged);
-      }
+      streakDays.value = computeStreak(merged);
     } else if (props.pendingReflection) {
       // No DB data yet but have pending reflection (just registered)
       reflections.value = [props.pendingReflection];
@@ -468,19 +488,7 @@ onMounted(async () => {
         }
 
         reflections.value = merged;
-
-        // Use DB streak as source of truth to avoid timezone bugs in computeStreak
-        try {
-          const streakRes = await fetch(`/api/streak/${userId}`);
-          const streakData = await streakRes.json();
-          if (streakData && typeof streakData.streak === 'number' && streakData.streak > 0) {
-            streakDays.value = streakData.streak;
-          } else {
-            streakDays.value = computeStreak(merged);
-          }
-        } catch {
-          streakDays.value = computeStreak(merged);
-        }
+        streakDays.value = computeStreak(merged);
       } else if (props.pendingReflection) {
         // DB empty but have pending reflection (just registered first time)
         reflections.value = [props.pendingReflection];
@@ -576,14 +584,13 @@ async function onJournalDone(data) {
       console.log('[Innerly] Reflection saved to DB successfully');
       // Update streak in DB after saving reflection
       try {
-        const streakUpdateRes = await fetch(`/api/streak/${userId}`, {
+        const streakUpdateRes = await fetch(`${BASE}/api/streak/${userId}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ today: dateKey })
         });
         const streakData = await streakUpdateRes.json();
         if (streakData && typeof streakData.streak === 'number') {
-          streakDays.value = streakData.streak;
           console.log('[Innerly] Streak updated in DB:', streakData.streak);
         }
       } catch { /* keep computeStreak value if fetch fails */ }

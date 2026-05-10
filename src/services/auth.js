@@ -1,4 +1,5 @@
-const API_URL = "https://innerly-production.up.railway.app/api/auth";
+const BASE = import.meta.env.VITE_API_URL || "http://localhost:3000";
+const API_URL = `${BASE}/api/auth`;
 
 export const authService = {
   async register(name, email, password, username) {
@@ -61,5 +62,37 @@ export const authService = {
 
   isAuthenticated() {
     return !!this.getToken();
+  },
+
+  async updateEmail(newEmail) {
+    console.log('[DEBUG-auth] updateEmail fetch to:', `${API_URL}/email`)
+    const res = await fetch(`${API_URL}/email`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${this.getToken()}`,
+      },
+      body: JSON.stringify({ email: newEmail }),
+    });
+    console.log('[DEBUG-auth] response status:', res.status)
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || "Failed to update email");
+    return data;
+  },
+
+  async updatePassword(newPassword) {
+    console.log('[DEBUG-auth] updatePassword fetch to:', `${API_URL}/password`)
+    const res = await fetch(`${API_URL}/password`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${this.getToken()}`,
+      },
+      body: JSON.stringify({ password: newPassword }),
+    });
+    console.log('[DEBUG-auth] response status:', res.status)
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || "Failed to update password");
+    return data;
   },
 };

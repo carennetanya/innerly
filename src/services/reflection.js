@@ -1,4 +1,5 @@
-const API_URL = "https://innerly-production.up.railway.app/api/reflections";
+const BASE = import.meta.env.VITE_API_URL || "http://localhost:3000";
+const API_URL = `${BASE}/api/reflections`;
 
 export const reflectionService = {
   async getReflections(userId) {

@@ -1,4 +1,5 @@
-const API_URL = "https://innerly-production.up.railway.app/api/commitment";
+const BASE = import.meta.env.VITE_API_URL || "http://localhost:3000";
+const API_URL = `${BASE}/api/commitment`;
 
 export const commitmentService = {
   async saveCommitment(userId, { date, action, moodImg, mood }) {

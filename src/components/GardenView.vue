@@ -38,7 +38,7 @@
         </button>
         <div class="kb-streak-container">
           <div class="kb-streak-main">
-            <img :src="headerStreakImg" alt="streak plant" class="kb-streak-plant-img" />
+            <img :src="headerStreakImg" alt="streak plant" class="kb-streak-plant-img" @error="(e) => e.target.style.display='none'" />
             <span class="kb-streak-num">{{ streakDays }}</span>
           </div>
           <div class="kb-progress-box">
@@ -156,6 +156,7 @@
                   :src="flower.img"
                   :alt="flower.label"
                   class="kb-mood-img kb-mood-img-large fade-flower-item"
+                  @error="(e) => e.target.style.display='none'"
                 />
                 <span v-else class="kb-flower-emoji fade-flower-item">{{ flower.emoji }}</span>
               </div>
@@ -200,6 +201,7 @@
                 :src="flower.img"
                 :alt="flower.label"
                 class="kb-list-flower-img"
+                @error="(e) => e.target.style.display='none'"
               />
               <span v-if="getDayFlowers(day).length > 3" class="kb-list-flower-more">+{{ getDayFlowers(day).length - 3 }}</span>
             </div>
@@ -246,7 +248,7 @@
 
     <!-- Flower Collection Button (floating, bottom left) -->
     <button class="kb-collection-fab" @click="openCollectionPopup" :title="lang === 'id' ? 'Koleksi Bunga' : 'Flower Collection'">
-      <img :src="collectedFlowers.length > 0 ? collectedFlowers[collectedFlowers.length - 1].img : flowerOptions[0].img" class="kb-collection-fab-img" alt="flower" />
+      <img :src="collectedFlowers.length > 0 ? collectedFlowers[collectedFlowers.length - 1].img : flowerOptions[0].img" class="kb-collection-fab-img" alt="flower" @error="(e) => e.target.style.display='none'" />
       <span class="kb-collection-fab-count">{{ collectedFlowers.length }}</span>
     </button>
 
@@ -337,7 +339,7 @@
               <img v-if="plantStage === 'dirt'" src="/dirt.png" alt="dirt" class="kb-plant-img kb-plant-dirt" />
               <img v-else-if="plantStage === 'seed'" src="/seeds.png" alt="seed" class="kb-plant-img kb-plant-seed" />
               <img v-else-if="plantStage === 'sprout'" src="/leaf.png" alt="sprout" class="kb-plant-img kb-plant-sprout" />
-              <img v-else-if="plantStage === 'flower' && chosenFlower" :src="chosenFlower" alt="flower" class="kb-plant-img kb-plant-flower" />
+              <img v-else-if="plantStage === 'flower' && chosenFlower" :src="chosenFlower" alt="flower" class="kb-plant-img kb-plant-flower" @error="(e) => e.target.style.display='none'" />
               <img v-else src="/pot.png" alt="flower" class="kb-plant-img kb-plant-flower" />
             </div>
 
@@ -399,7 +401,7 @@
 
           <div class="kb-growth-progress-section">
             <div class="kb-growth-streak-row">
-              <img :src="headerStreakImg" alt="streak plant" class="kb-growth-plant-icon" />
+              <img :src="headerStreakImg" alt="streak plant" class="kb-growth-plant-icon" @error="(e) => e.target.style.display='none'" />
               <span class="kb-growth-streak-label">Streak: Day {{ streakDays }}</span>
             </div>
             <div class="kb-growth-progress-label">
@@ -454,12 +456,12 @@
               <div class="kb-popup-moods-row">
                 <template v-if="popup.reflection.moods && popup.reflection.moods.length > 0">
                   <div v-for="(mLabel, mi) in popup.reflection.moods" :key="mi" class="kb-popup-mood-item">
-                    <img v-if="getMoodImage(mLabel)" :src="getMoodImage(mLabel)" :alt="mLabel" class="kb-popup-mood-img-lg" />
+                    <img v-if="getMoodImage(mLabel)" :src="getMoodImage(mLabel)" :alt="mLabel" class="kb-popup-mood-img-lg" @error="(e) => e.target.style.display='none'" />
                     <span class="kb-popup-mood-name">{{ mLabel }}</span>
                   </div>
                 </template>
                 <div v-else class="kb-popup-mood-item">
-                  <img v-if="getMoodImage(popup.reflection.mood)" :src="getMoodImage(popup.reflection.mood)" :alt="popup.reflection.mood" class="kb-popup-mood-img-lg" />
+                  <img v-if="getMoodImage(popup.reflection.mood)" :src="getMoodImage(popup.reflection.mood)" :alt="popup.reflection.mood" class="kb-popup-mood-img-lg" @error="(e) => e.target.style.display='none'" />
                   <span class="kb-popup-mood-name">{{ popup.reflection.mood }}</span>
                 </div>
               </div>
@@ -568,7 +570,7 @@
               :class="{ 'selected': tempFlower === f.img }"
               @click="tempFlower = f.img"
             >
-              <img :src="f.img" :alt="f.label" class="kb-flower-option-img" />
+              <img :src="f.img" :alt="f.label" class="kb-flower-option-img" @error="(e) => e.target.style.display='none'" />
               <span class="kb-flower-option-label">{{ lang === 'id' ? f.labelId : f.label }}</span>
             </button>
           </div>
@@ -634,7 +636,7 @@
               :class="{ 'kb-collection-slot-owned': isFlowerCollected(f.key), 'kb-collection-slot-locked': !isFlowerCollected(f.key) }"
             >
               <div class="kb-collection-slot-inner">
-                <img v-if="isFlowerCollected(f.key)" :src="f.img" :alt="f.label" class="kb-collection-flower-img" />
+                <img v-if="isFlowerCollected(f.key)" :src="f.img" :alt="f.label" class="kb-collection-flower-img" @error="(e) => e.target.style.display='none'" />
                 <span v-else class="kb-collection-locked-icon">🔒</span>
               </div>
               <span class="kb-collection-flower-name">{{ lang === 'id' ? f.labelId : f.label }}</span>
@@ -657,6 +659,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { authService } from '../services/auth.js'
 import { reflectionService } from '../services/reflection.js'
+const BASE = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
 const props = defineProps({
   isDark: Boolean,
@@ -702,13 +705,11 @@ const passwordError = ref('')
 const userEmail = ref('user@innerly.app')
 const userUsername = ref('')
 
-// Tambahkan ini di dalam script setup
 const streakProgress = computed(() => {
-  // Anggap milestone berikutnya adalah 3 hari
-  const target = 3;
-  const current = props.streakDays % target; 
-  // Jika streak sudah 3, 6, 9... maka progres penuh (100%)
-  return (current === 0 && props.streakDays > 0) ? 100 : (current / target) * 100;
+  const s = props.streakDays || 0
+  if (s <= 0) return 0
+  const mod = s % 3
+  return ((mod === 0 ? 3 : mod) / 3) * 100
 });
 
 function toggleProfile() {
@@ -717,29 +718,49 @@ function toggleProfile() {
   showChangePassword.value = false
 }
 
-function saveEmail() {
-  if (newEmail.value) {
+async function saveEmail() {
+  console.log('[DEBUG-Garden] saveEmail called, value:', newEmail.value)
+  if (!newEmail.value) {
+    alert('Email kosong')
+    return
+  }
+  try {
+    const result = await authService.updateEmail(newEmail.value)
+    console.log('[DEBUG-Garden] Update email success:', result)
     userEmail.value = newEmail.value
-    // TODO: update email ke backend jika ada endpoint
+    const user = authService.getUser()
+    if (user) { user.email = newEmail.value; authService.saveUser(user) }
     newEmail.value = ''
     showChangeEmail.value = false
+    alert('Email berhasil diupdate!')
+  } catch (err) {
+    console.error('[DEBUG-Garden] Update email error:', err)
+    alert('Gagal update email: ' + (err.message || 'unknown'))
   }
 }
 
-function savePassword() {
+async function savePassword() {
+  console.log('[DEBUG-Garden] savePassword called')
   if (!newPassword.value || !confirmPassword.value) {
-    passwordError.value = 'Password tidak boleh kosong.'
+    passwordError.value = 'Password tidak boleh kosong'
     return
   }
   if (newPassword.value !== confirmPassword.value) {
-    passwordError.value = 'Konfirmasi password tidak cocok.'
+    passwordError.value = 'Password tidak cocok'
     return
   }
-  // Simulasi update password
-  newPassword.value = ''
-  confirmPassword.value = ''
-  passwordError.value = ''
-  showChangePassword.value = false
+  try {
+    const result = await authService.updatePassword(newPassword.value)
+    console.log('[DEBUG-Garden] Password update success:', result)
+    newPassword.value = ''
+    confirmPassword.value = ''
+    passwordError.value = ''
+    showChangePassword.value = false
+    alert('Password berhasil diupdate!')
+  } catch (err) {
+    console.error('[DEBUG-Garden] Update password error:', err)
+    passwordError.value = err.message || 'Gagal update password'
+  }
 }
 
 function handleOutsideClick(e) {
@@ -1071,46 +1092,37 @@ function getCollectionKey() {
   return userId ? `innerly_collected_flowers_${userId}` : 'innerly_collected_flowers_guest'
 }
 
-function loadCollectedFlowers() {
-  try {
-    collectedFlowers.value = []
-    const stored = localStorage.getItem(getCollectionKey())
-    if (stored) collectedFlowers.value = JSON.parse(stored)
-  } catch {}
-
-  // Load from DB — DB is source of truth for cross-device sync
+async function loadCollectedFlowers() {
   const userId = props.userId
   if (userId) {
-    fetch(`/api/streak/${userId}/collection`)
-      .then(r => r.json())
-      .then(data => {
-        const dbFlowers = (data.flowers && Array.isArray(data.flowers)) ? data.flowers : []
-        const localFlowers = collectedFlowers.value || []
-
-        if (dbFlowers.length === 0 && localFlowers.length === 0) return
-
-        // Merge: union of both — ambil semua bunga unik dari DB dan local
-        // Pakai key sebagai identifier supaya tidak duplikat
+    try {
+      const res = await fetch(`${BASE}/api/streak/${userId}/collection`)
+      const data = res.ok ? await res.json() : null
+      const dbFlowers = (data && data.flowers && Array.isArray(data.flowers)) ? data.flowers : []
+      if (dbFlowers.length > 0) {
+        // Merge DB dengan localStorage supaya tidak hilang data lokal
+        const local = localStorage.getItem(getCollectionKey())
+        const localFlowers = local ? JSON.parse(local) : []
         const merged = [...dbFlowers]
         for (const lf of localFlowers) {
-          if (!merged.some(f => f.key === lf.key)) {
-            merged.push(lf)
-          }
+          if (!merged.some(f => f.key === lf.key)) merged.push(lf)
         }
-
         collectedFlowers.value = merged
-        // Simpan hasil merge ke localStorage
-        try {
-          localStorage.setItem(getCollectionKey(), JSON.stringify(merged))
-        } catch {}
-        // Sync merged result ke DB (supaya DB juga up-to-date)
-        if (merged.length > dbFlowers.length) {
-          syncCollectionToDb()
-        }
-      })
-      .catch(() => {
-        // DB gagal → tetap pakai localStorage (sudah di-load di atas)
-      })
+        try { localStorage.setItem(getCollectionKey(), JSON.stringify(merged)) } catch {}
+        if (merged.length > dbFlowers.length) syncCollectionToDb()
+      } else {
+        const local = localStorage.getItem(getCollectionKey())
+        if (local) collectedFlowers.value = JSON.parse(local)
+      }
+    } catch {
+      const local = localStorage.getItem(getCollectionKey())
+      if (local) collectedFlowers.value = JSON.parse(local)
+    }
+  } else {
+    try {
+      const local = localStorage.getItem(getCollectionKey())
+      if (local) collectedFlowers.value = JSON.parse(local)
+    } catch {}
   }
 }
 
@@ -1124,7 +1136,7 @@ function saveCollectedFlowers() {
 function syncCollectionToDb(retryCount = 0) {
   const userId = props.userId
   if (!userId) return
-  fetch(`/api/streak/${userId}/collection`, {
+  fetch(`${BASE}/api/streak/${userId}/collection`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ flowers: collectedFlowers.value })
@@ -1180,6 +1192,11 @@ const flowerOptions = [
 
 function confirmFlower() {
   if (!tempFlower.value) return
+  if (chosenFlower.value) {
+    showFlowerPicker.value = false
+    tempFlower.value = null
+    return
+  }
   const pickedImg = tempFlower.value
   chosenFlower.value = pickedImg
   localStorage.setItem('innerly_chosen_flower', pickedImg)
@@ -1209,43 +1226,24 @@ function confirmFlower() {
   // sehingga siklus berikutnya mulai fresh (siram ke-1 lagi)
   const userId = props.userId
   if (userId) {
-    fetch(`/api/streak/${userId}/flower`, {
+    fetch(`${BASE}/api/streak/${userId}/flower`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ flower: pickedImg })
     })
       .then(res => res.json())
-      .then(data => {
-        console.log('[Innerly] Flower saved to DB, cycle reset:', data)
-        // Reset wateredStreak lokal supaya totalWaterings = 0 → dirt
-        // (Server sudah reset watered_streak ke 0)
-        wateredStreak.value = 0
-        hasWateredLocally.value = false
-        localStorage.removeItem('innerly_watered_date')
-        // Setelah animasi bunga selesai, reset chosen flower supaya tampil dirt
-        setTimeout(() => {
-          chosenFlower.value = null
-          localStorage.removeItem('innerly_chosen_flower')
-        }, 3500)
-      })
+      .then(data => { console.log('[Innerly] Flower saved to DB:', data) })
       .catch(e => console.error('[Innerly] FAILED to save flower to DB:', e))
   } else {
     console.warn('[Innerly] confirmFlower: userId is null, cannot save to DB.')
-    // Guest fallback: reset lokal saja
-    wateredStreak.value = 0
-    hasWateredLocally.value = false
-    localStorage.removeItem('innerly_watered_date')
-    setTimeout(() => {
-      chosenFlower.value = null
-      localStorage.removeItem('innerly_chosen_flower')
-    }, 3500)
   }
   tempFlower.value = null
 }
 
 function onFlowerPickerClose() {
-  // Jika user tutup tanpa pilih, pakai default pot.png
-  if (!chosenFlower.value) chosenFlower.value = '/pot.png'
+  if (plantStage.value === 'flower' && hasWateredLocally.value && !chosenFlower.value) {
+    return  // mandatory: harus pilih bunga, gak bisa skip
+  }
   showFlowerPicker.value = false
   tempFlower.value = null
 }
@@ -1260,7 +1258,7 @@ const wateredStreak = ref(null)
 async function loadUserDataFromDB(userId) {
   if (!userId) return;
   try {
-    const res = await fetch(`/api/streak/${userId}`);
+    const res = await fetch(`${BASE}/api/streak/${userId}`);
     if (!res.ok) return;
     const data = await res.json();
     console.log('[Innerly] Loaded streak data from DB:', data);
@@ -1446,7 +1444,7 @@ function triggerWatering() {
     // Save watered date to DB — use server-returned streak as source of truth
     const userId = props.userId;
     if (userId) {
-      fetch(`/api/streak/${userId}/water`, {
+      fetch(`${BASE}/api/streak/${userId}/water`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ date: todayDate })
@@ -1466,12 +1464,6 @@ function triggerWatering() {
             showStreakResetToast()
           }
 
-          // Flower picker muncul saat siram ke-3 dalam siklus (ws == 3)
-          if (ws === 3) {
-            chosenFlower.value = null;
-            localStorage.removeItem('innerly_chosen_flower');
-            setTimeout(() => { showFlowerPicker.value = true }, 400);
-          }
         })
         .catch(e => {
           console.warn('[Innerly] Could not save watered date:', e);
@@ -1532,25 +1524,42 @@ const totalWaterings = computed(() => {
   return effectiveStreak.value + (hasWateredLocally.value ? 1 : 0)
 })
 
-// Posisi dalam siklus 3-hari (1, 2, atau 3)
-const posInCycle = computed(() => {
-  if (totalWaterings.value === 0) return 0
-  return ((totalWaterings.value - 1) % 3) + 1
+const cyclePos = computed(() => {
+  const s = props.streakDays || 0
+  if (s <= 0) return 0
+  return ((s - 1) % 3) + 1  // 1, 2, atau 3
 })
 
-const streakInCycle = computed(() => posInCycle.value)
-
-const cycleProgress = computed(() => {
-  return (posInCycle.value / 3) * 100
+// 0=dirt, 1=seed, 2=sprout, 3=flower
+const displayPos = computed(() => {
+  if (cyclePos.value === 0) return 0
+  return hasWateredLocally.value ? cyclePos.value : (cyclePos.value - 1)
 })
+
+const posInCycle = computed(() => cyclePos.value)
+const streakInCycle = computed(() => cyclePos.value)
+const cycleProgress = computed(() => (cyclePos.value / 3) * 100)
 
 const plantStage = computed(() => {
-  if (totalWaterings.value === 0) return 'dirt'
-  if (posInCycle.value === 1) return 'seed'
-  if (posInCycle.value === 2) return 'sprout'
-  if (posInCycle.value === 3) return 'flower'
-  return 'dirt'
+  const p = displayPos.value
+  if (p === 0) return 'dirt'
+  if (p === 1) return 'seed'
+  if (p === 2) return 'sprout'
+  return 'flower'
 })
+
+watch(cyclePos, (newPos, oldPos) => {
+  if (oldPos === 3 && newPos === 1) {
+    chosenFlower.value = null
+    localStorage.removeItem('innerly_chosen_flower')
+  }
+})
+
+watch([plantStage, hasWateredLocally], ([stage, watered]) => {
+  if (stage === 'flower' && watered && !chosenFlower.value && !showFlowerPicker.value) {
+    setTimeout(() => { showFlowerPicker.value = true }, 400)
+  }
+}, { flush: 'post', immediate: true })
 
 // Header streak icon
 const headerStreakImg = computed(() => {
