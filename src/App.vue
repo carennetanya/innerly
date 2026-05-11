@@ -42,13 +42,27 @@
         @done="onEvaluationDone"
         @back="stage = 'moodcheck'"
       />
+      <InsightScreen
+        v-else-if="stage === 'insight'"
+        key="insight"
+        :is-dark="isDark"
+        :lang="lang"
+        :context="{
+          trigger: initialReflection.value,
+          moods: initialMood.value?.moods || [],
+          wentWell: initialEvaluation.value?.wentWell || '',
+          needsWork: initialEvaluation.value?.needsWork || ''
+        }"
+        @done="onInsightDone"
+        @back="stage = 'evaluation'"
+      />
       <ActionPlanScreen
         v-else-if="stage === 'actionplan'"
         key="actionplan"
         :is-dark="isDark"
         :lang="lang"
         @done="onActionPlanDone"
-        @back="stage = 'evaluation'"
+        @back="stage = 'insight'"
       />
       <SummaryScreen
         v-else-if="stage === 'summary'"
@@ -113,6 +127,7 @@ import MoodCheckScreen from "./components/MoodCheckScreen.vue";
 import DashboardView from "./views/DashboardView.vue";
 import NameModal from "./components/NameModal.vue";
 import EvaluationScreen from "./components/EvaluationScreen.vue";
+import InsightScreen from "./components/InsightScreen.vue";
 import ActionPlanScreen from "./components/ActionPlanScreen.vue";
 import SummaryScreen from "./components/SummaryScreen.vue";
 import AuthModal from "./components/AuthModal.vue";
@@ -129,6 +144,7 @@ const userName = ref("");
 const initialReflection = ref("");
 const initialMood = ref(null);
 const initialEvaluation = ref(null);
+const initialInsight = ref("");
 const initialAction = ref(null);
 const summaryData = ref({});
 const nameModalRef = ref(null);
@@ -291,6 +307,12 @@ function onMoodDone(moodData) {
 
 function onEvaluationDone(evalData) {
   initialEvaluation.value = evalData;
+  const nextStage = evalData?.next || "insight";
+  stage.value = nextStage;
+}
+
+function onInsightDone(insightData) {
+  initialInsight.value = insightData?.insight || "";
   stage.value = "actionplan";
 }
 
@@ -302,6 +324,7 @@ function onActionPlanDone(actionData) {
     moodEmoji: initialMood.value?.moodEmoji || "",
     wentWell: initialEvaluation.value?.wentWell || "",
     needsWork: initialEvaluation.value?.needsWork || "",
+    insight: initialInsight.value || "",
     action: actionData.action || "",
     committed: actionData.committed || false,
   };
@@ -388,6 +411,7 @@ function onStartNew() {
   initialReflection.value = "";
   initialMood.value = null;
   initialEvaluation.value = null;
+  initialInsight.value = "";
   initialAction.value = null;
   summaryData.value = {};
   prevStage.value = "dashboard";
