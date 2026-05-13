@@ -106,11 +106,57 @@
 
           <!-- Step 1: Description -->
           <div v-else-if="currentStep === 1" class="gj-step-content">
-            <textarea v-model="answers.description" class="gj-textarea" :placeholder="t.step1ph" rows="6"></textarea>
-            <div class="gj-char-count">{{ t.step1chars(answers.description.length) }}</div>
-            <div class="gj-actions">
-              <button class="gj-btn-back" @click="currentStep = 0">{{ t.step1back }}</button>
-              <button class="gj-btn-next" :disabled="answers.description.trim().length < 5" @click="currentStep = 2">{{ t.nextBtn }}</button>
+            <!-- Description input -->
+            <div v-if="!inChatPhase" class="gj-desc-section">
+              <textarea v-model="answers.description" class="gj-textarea" :placeholder="t.step1ph" rows="6"></textarea>
+              <div class="gj-char-count">{{ t.step1chars(answers.description.length) }}</div>
+              <div class="gj-actions">
+                <button class="gj-btn-back" @click="currentStep = 0">{{ t.step1back }}</button>
+                <button class="gj-btn-next" :disabled="answers.description.trim().length < 5" @click="startCalyChat">{{ t.nextBtn }}</button>
+              </div>
+            </div>
+
+            <!-- Caly Chat Phase -->
+            <div v-else class="gj-caly-chat-container">
+              <div class="gj-chat-header">
+                <h3>💜 Chat dengan Caly</h3>
+                <p>Mari kita gali lebih dalam tentang pengalamanmu</p>
+              </div>
+              
+              <!-- Chat messages -->
+              <div class="gj-chat-messages" ref="chatMessagesContainer">
+                <div v-for="(msg, idx) in calyConversation" :key="idx" :class="['gj-chat-msg', msg.role === 'user' ? 'gj-msg-user' : 'gj-msg-caly']">
+                  <div class="gj-msg-bubble">{{ msg.text }}</div>
+                </div>
+                <div v-if="calyLoading" class="gj-chat-msg gj-msg-caly gj-msg-typing">
+                  <div class="gj-msg-bubble gj-typing-bubble">
+                    <span></span><span></span><span></span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Loading indicator -->
+              <!-- hidden, replaced by typing bubble -->
+
+              <!-- Input area -->
+              <div class="gj-chat-input-area" v-if="!calyLoading">
+                <input 
+                  v-model="userChatInput" 
+                  @keydown.enter="sendCalyMessage"
+                  class="gj-chat-input" 
+                  placeholder="Ketik balasanmu..."
+                  :disabled="calyLoading"
+                />
+                <button class="gj-chat-send-btn" @click="sendCalyMessage" :disabled="calyLoading || userChatInput.trim().length === 0">
+                  Kirim
+                </button>
+              </div>
+
+              <!-- Next button - show after some messages -->
+              <div v-if="calyConversation.length >= 4" class="gj-chat-actions">
+                <button class="gj-btn-back" @click="exitCalyChat">Kembali ke deskripsi</button>
+                <button class="gj-btn-next" @click="currentStep = 2">{{ t.nextBtn }}</button>
+              </div>
             </div>
           </div>
 
@@ -257,9 +303,10 @@
 </template>
 
 <script setup>
-import { ref, computed } from "vue";
+import { ref, computed, nextTick } from "vue";
 import { authService } from "../services/auth.js";
 import { commitmentService } from "../services/commitment.js";
+import { calyService } from "../services/caly.js";
 
 const props = defineProps({
   isDark: Boolean,
@@ -428,6 +475,14 @@ const currentStep = ref(0);
 const actionCommitted = ref(false);
 const savedToast = ref(false);
 
+// Caly chat state
+const inChatPhase = ref(false);
+const calyConversation = ref([]);
+const userChatInput = ref("");
+const calyLoading = ref(false);
+const chatInitialized = ref(false);
+const chatMessagesContainer = ref(null);
+
 const steps = [
   { title: "Title" },
   { title: "Description" },
@@ -544,6 +599,96 @@ function startNew() {
   };
   actionCommitted.value = false;
   currentStep.value = 0;
+}
+
+// Caly Chat Methods
+async function scrollToLastMessage() {
+  await nextTick();
+  if (chatMessagesContainer.value) {
+    chatMessagesContainer.value.scrollTop = chatMessagesContainer.value.scrollHeight;
+  }
+}
+
+async function startCalyChat() {
+  inChatPhase.value = true;
+  calyConversation.value = [];
+  userChatInput.value = "";
+  calyLoading.value = true;
+  chatInitialized.value = false;
+  await scrollToLastMessage();
+
+  try {
+    const initialResponse = await calyService.getInitialResponse(
+      answers.value.description
+    );
+    calyConversation.value.push({
+      role: "assistant",
+      text: initialResponse,
+    });
+    chatInitialized.value = true;
+    await scrollToLastMessage();
+  } catch (error) {
+    console.error("Error getting initial Caly response:", error);
+    calyConversation.value.push({
+      role: "assistant",
+      text: "Maaf, ada kendala. Coba lagi nanti, ya? 💜",
+    });
+    await scrollToLastMessage();
+  } finally {
+    calyLoading.value = false;
+  }
+}
+
+async function sendCalyMessage() {
+  if (!userChatInput.value.trim()) return;
+
+  const userMessage = userChatInput.value.trim();
+  userChatInput.value = "";
+
+  // Add user message to conversation
+  calyConversation.value.push({
+    role: "user",
+    text: userMessage,
+  });
+
+  await scrollToLastMessage();
+  calyLoading.value = true;
+  await scrollToLastMessage();
+
+  try {
+    // Prepare conversation history for API - pass just what we have so far
+    const conversationHistory = calyConversation.value.slice(0, -1).map((msg) => ({
+      role: msg.role,
+      text: msg.text,
+    }));
+
+    const response = await calyService.sendMessage(
+      userMessage,
+      conversationHistory
+    );
+
+    calyConversation.value.push({
+      role: "assistant",
+      text: response.text,
+    });
+
+    await scrollToLastMessage();
+  } catch (error) {
+    console.error("Error sending message to Caly:", error);
+    calyConversation.value.push({
+      role: "assistant",
+      text: "Maaf, ada kendala. Bisa coba lagi?",
+    });
+    await scrollToLastMessage();
+  } finally {
+    calyLoading.value = false;
+  }
+}
+
+function exitCalyChat() {
+  inChatPhase.value = false;
+  calyConversation.value = [];
+  userChatInput.value = "";
 }
 </script>
 
@@ -1713,5 +1858,241 @@ function startNew() {
 
 .gj-fade-leave-to {
   opacity: 0;
+}
+
+/* ── Caly Chat Interface ── */
+.gj-caly-chat-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: 100%;
+  min-height: 500px;
+}
+
+.gj-chat-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 0;
+  border-bottom: 2px solid rgba(124, 108, 168, 0.15);
+  margin-bottom: 8px;
+}
+
+.gj-chat-header h3 {
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin: 0;
+  color: #5b4a9a;
+}
+
+.gj-wrap.is-dark .gj-chat-header h3 {
+  color: #c4b5fd;
+}
+
+.gj-chat-header p {
+  font-size: 0.82rem;
+  color: rgba(80, 60, 140, 0.6);
+  margin: 0;
+}
+
+.gj-wrap.is-dark .gj-chat-header p {
+  color: rgba(180, 160, 255, 0.55);
+}
+
+.gj-chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 8px 0;
+  min-height: 220px;
+  max-height: 360px;
+  scroll-behavior: smooth;
+}
+
+.gj-chat-msg {
+  display: flex;
+  animation: gjChatSlide 0.3s ease;
+}
+
+@keyframes gjChatSlide {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.gj-msg-user {
+  justify-content: flex-end;
+}
+
+.gj-msg-caly {
+  justify-content: flex-start;
+}
+
+.gj-msg-bubble {
+  max-width: 85%;
+  padding: 12px 16px;
+  border-radius: 16px;
+  font-size: 0.9rem;
+  line-height: 1.7;
+  font-family: "Outfit", sans-serif;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.gj-msg-user .gj-msg-bubble {
+  background: linear-gradient(135deg, #5b4a9a 0%, #9333ea 100%);
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+
+.gj-msg-caly .gj-msg-bubble {
+  background: rgba(124, 108, 168, 0.08);
+  color: #2d1f6e;
+  border: 1px solid rgba(124, 108, 168, 0.2);
+  border-bottom-left-radius: 4px;
+}
+
+.gj-wrap.is-dark .gj-msg-caly .gj-msg-bubble {
+  background: rgba(167, 139, 250, 0.1);
+  color: #e8d8ff;
+  border-color: rgba(167, 139, 250, 0.2);
+}
+
+.gj-typing-bubble {
+  display: inline-flex;
+  gap: 6px;
+  padding: 12px 16px;
+  background: rgba(124, 108, 168, 0.08);
+  border-radius: 16px;
+  width: fit-content;
+  border: 1px solid rgba(124, 108, 168, 0.2);
+}
+
+.gj-msg-typing .gj-msg-bubble {
+  min-width: 90px;
+  max-width: 180px;
+}
+
+.gj-typing-bubble span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #7c6ca8;
+  animation: gjBounce 1.4s infinite;
+}
+
+.gj-typing-bubble span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.gj-typing-bubble span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes gjBounce {
+  0%, 100% {
+    transform: translateY(0);
+    opacity: 0.7;
+  }
+  50% {
+    transform: translateY(-10px);
+    opacity: 1;
+  }
+}
+
+.gj-chat-input-area {
+  display: flex;
+  gap: 10px;
+  padding: 12px 0;
+  border-top: 1px solid rgba(124, 108, 168, 0.15);
+}
+
+.gj-chat-input {
+  flex: 1;
+  padding: 11px 14px;
+  border: 1.5px solid rgba(124, 108, 168, 0.2);
+  border-radius: 50px;
+  background: rgba(255, 255, 255, 0.7);
+  font-family: "Outfit", sans-serif;
+  font-size: 0.9rem;
+  color: #2d1f6e;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.gj-wrap.is-dark .gj-chat-input {
+  background: rgba(30, 20, 50, 0.6);
+  color: #ede8ff;
+  border-color: rgba(167, 139, 250, 0.2);
+}
+
+.gj-chat-input:focus {
+  border-color: #7c6ca8;
+  box-shadow: 0 0 0 3px rgba(124, 108, 168, 0.12);
+}
+
+.gj-wrap.is-dark .gj-chat-input:focus {
+  border-color: #a78bfa;
+  box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.12);
+}
+
+.gj-chat-input::placeholder {
+  color: rgba(100, 80, 160, 0.35);
+}
+
+.gj-wrap.is-dark .gj-chat-input::placeholder {
+  color: rgba(167, 139, 250, 0.35);
+}
+
+.gj-chat-send-btn {
+  padding: 11px 20px;
+  border-radius: 50px;
+  background: linear-gradient(135deg, #5b4a9a 0%, #9333ea 100%);
+  color: white;
+  border: none;
+  font-family: "Outfit", sans-serif;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.gj-wrap.is-dark .gj-chat-send-btn {
+  background: linear-gradient(135deg, #a78bfa 0%, #c084fc 100%);
+}
+
+.gj-chat-send-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(147, 51, 234, 0.3);
+}
+
+.gj-chat-send-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.gj-chat-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(124, 108, 168, 0.15);
+}
+
+.gj-desc-section {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
 }
 </style>
