@@ -15,8 +15,8 @@ const PORT = process.env.PORT || 3000;
 app.use(cors({
   origin: [
     "https://innerly-psi.vercel.app",
+    "https://innerly.my.id",
     "http://localhost:5173",
-    
   ],
 }));
 app.use(express.json());
